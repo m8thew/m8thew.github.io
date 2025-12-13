@@ -198,19 +198,9 @@
         </div>
     </div>
     
-    <audio id="popSound" preload="auto">
-        <source src="https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpok.mp3" type="audio/mpeg">
-    </audio>
-    
-    <audio id="reloadSound" preload="auto">
-        <source src="https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3" type="audio/mpeg">
-    </audio>
-    
     <script>
         const filmWrapper = document.getElementById('filmWrapper');
         const poppedCountEl = document.getElementById('poppedCount');
-        const popSound = document.getElementById('popSound');
-        const reloadSound = document.getElementById('reloadSound');
         
         const ROWS = 9;
         const COLS = 9;
@@ -220,38 +210,64 @@
         let popped = 0;
         let totalPopped = 0;
         let allPopped = false;
-        let audioInitialized = false;
         let lastPop = 0;
         const celebrated = new Set();
         
-        popSound.volume = 0.7;
-        reloadSound.volume = 0.7;
+        let audioContext;
+        let popSoundBuffer;
+        let reloadSoundBuffer;
+        let audioInitialized = false;
         
         function initAudio() {
             if (audioInitialized) return;
             
             try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                const audioContext = new AudioContext();
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                
-                popSound.play().then(() => {
-                    popSound.pause();
-                    popSound.currentTime = 0;
-                }).catch(() => {});
-                
-                reloadSound.play().then(() => {
-                    reloadSound.pause();
-                    reloadSound.currentTime = 0;
-                }).catch(() => {});
+                loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpok.mp3', 'pop');
+                loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3', 'reload');
                 
                 audioInitialized = true;
             } catch (e) {
-                console.log("Аудио инициализировано");
-                audioInitialized = true;
+                console.log("Web Audio API не поддерживается");
+            }
+        }
+        
+        function loadSound(url, type) {
+            fetch(url)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+                .then(audioBuffer => {
+                    if (type === 'pop') {
+                        popSoundBuffer = audioBuffer;
+                    } else if (type === 'reload') {
+                        reloadSoundBuffer = audioBuffer;
+                    }
+                })
+                .catch(e => console.log("Ошибка загрузки звука:", e));
+        }
+        
+        function playSound(buffer, volume = 0.7) {
+            if (!audioContext || !buffer) return;
+            
+            try {
+                const source = audioContext.createBufferSource();
+                const gainNode = audioContext.createGain();
+                
+                source.buffer = buffer;
+                gainNode.gain.value = volume;
+                
+                source.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                source.start(0);
+                
+                setTimeout(() => {
+                    source.disconnect();
+                    gainNode.disconnect();
+                }, buffer.duration * 1000);
+            } catch (e) {
+                console.log("Ошибка воспроизведения звука");
             }
         }
         
@@ -306,15 +322,6 @@
             }
         };
         
-        function playSound(sound) {
-            if (!audioInitialized) return;
-            
-            try {
-                sound.currentTime = 0;
-                sound.play().catch(() => {});
-            } catch (e) {}
-        }
-        
         function popBubble(bubble) {
             const now = Date.now();
             if (now - lastPop < 30) return;
@@ -335,12 +342,16 @@
                 }
             });
             
-            playSound(popSound);
+            if (popSoundBuffer) {
+                playSound(popSoundBuffer, 0.7);
+            }
             
             if (popped === TOTAL && !allPopped) {
                 allPopped = true;
                 setTimeout(() => {
-                    playSound(reloadSound);
+                    if (reloadSoundBuffer) {
+                        playSound(reloadSoundBuffer, 0.7);
+                    }
                     
                     document.querySelectorAll('.bubble').forEach(b => {
                         b.classList.remove('popped');
