@@ -220,14 +220,44 @@
         let popped = 0;
         let totalPopped = 0;
         let allPopped = false;
-        let audioReady = false;
+        let audioInitialized = false;
         let lastPop = 0;
         const celebrated = new Set();
         
         popSound.volume = 0.7;
         reloadSound.volume = 0.7;
-        popSound.addEventListener('canplaythrough', () => audioReady = true);
-        reloadSound.addEventListener('canplaythrough', () => audioReady = true);
+        
+        function initAudio() {
+            if (audioInitialized) return;
+            
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const audioContext = new AudioContext();
+                
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
+                popSound.play().then(() => {
+                    popSound.pause();
+                    popSound.currentTime = 0;
+                }).catch(() => {});
+                
+                reloadSound.play().then(() => {
+                    reloadSound.pause();
+                    reloadSound.currentTime = 0;
+                }).catch(() => {});
+                
+                audioInitialized = true;
+            } catch (e) {
+                console.log("Аудио инициализировано");
+                audioInitialized = true;
+            }
+        }
+        
+        document.addEventListener('click', initAudio);
+        document.addEventListener('touchstart', initAudio);
+        document.addEventListener('keydown', initAudio);
         
         for (let i = 0; i < TOTAL; i++) {
             const bubble = document.createElement('div');
@@ -236,6 +266,7 @@
             
             bubble.onclick = (e) => {
                 e.preventDefault();
+                initAudio();
                 if (bubble.dataset.popped === '1') {
                     bubble.classList.remove('bubble-pulse');
                     void bubble.offsetWidth;
@@ -249,6 +280,7 @@
             
             bubble.ontouchstart = (e) => {
                 e.preventDefault();
+                initAudio();
                 const touch = e.touches[0];
                 const elem = document.elementFromPoint(touch.clientX, touch.clientY);
                 if (elem?.dataset?.popped === '1') {
@@ -268,10 +300,20 @@
         document.onkeydown = (e) => {
             if (e.code === 'Space') {
                 e.preventDefault();
+                initAudio();
                 const unpopped = [...document.querySelectorAll('.bubble[data-popped="0"]')];
                 if (unpopped.length) popBubble(unpopped[Math.random() * unpopped.length | 0]);
             }
         };
+        
+        function playSound(sound) {
+            if (!audioInitialized) return;
+            
+            try {
+                sound.currentTime = 0;
+                sound.play().catch(() => {});
+            } catch (e) {}
+        }
         
         function popBubble(bubble) {
             const now = Date.now();
@@ -293,18 +335,12 @@
                 }
             });
             
-            if (audioReady) {
-                popSound.currentTime = 0;
-                popSound.play().catch(() => {});
-            }
+            playSound(popSound);
             
             if (popped === TOTAL && !allPopped) {
                 allPopped = true;
                 setTimeout(() => {
-                    if (audioReady) {
-                        reloadSound.currentTime = 0;
-                        reloadSound.play().catch(() => {});
-                    }
+                    playSound(reloadSound);
                     
                     document.querySelectorAll('.bubble').forEach(b => {
                         b.classList.remove('popped');
