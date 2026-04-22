@@ -2,7 +2,7 @@
 <html lang="ru" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <title>чпок</title>
     <style>
@@ -285,277 +285,281 @@
     </div>
     
     <script>
-        const filmWrapper = document.getElementById('filmWrapper');
-        const poppedCountEl = document.getElementById('poppedCount');
-        const themeToggle = document.getElementById('themeToggle');
-        const html = document.documentElement;
-        
-        // --- Theme toggle ---
-        // Берём сохранённую тему; если не было — смотрим системную (prefers-color-scheme)
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const savedTheme = localStorage.getItem('theme') || (systemDark ? 'dark' : 'light');
-        html.setAttribute('data-theme', savedTheme);
+        (function(){
+            const filmWrapper = document.getElementById('filmWrapper');
+            const poppedCountEl = document.getElementById('poppedCount');
+            const themeToggle = document.getElementById('themeToggle');
+            const html = document.documentElement;
+            
+            // --- Theme toggle ---
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const savedTheme = localStorage.getItem('theme') || (systemDark ? 'dark' : 'light');
+            html.setAttribute('data-theme', savedTheme);
 
-        themeToggle.addEventListener('click', () => {
-            const current = html.getAttribute('data-theme');
-            const next = current === 'light' ? 'dark' : 'light';
-            html.setAttribute('data-theme', next);
-            localStorage.setItem('theme', next);
-        });
+            themeToggle.addEventListener('click', () => {
+                const current = html.getAttribute('data-theme');
+                const next = current === 'light' ? 'dark' : 'light';
+                html.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+            });
 
-        // --- Game constants ---
-        const ROWS = 9;
-        const COLS = 9;
-        const TOTAL = ROWS * COLS;
-        const MILESTONES = [100, 1000, 10000];
-        
-        let popped = 0;
-        let totalPopped = 0;
-        let allPopped = false;
-        let lastPop = 0;
-        const celebrated = new Set();
-        
-        // --- Audio ---
-        // WebAudio API с правильным iOS unlock и decodeAudioData на клоне буфера
-        const POP_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3';
-        const RELOAD_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3';
+            // --- Game constants ---
+            const ROWS = 9;
+            const COLS = 9;
+            const TOTAL = ROWS * COLS;
+            const MILESTONES = [100, 1000, 10000];
+            
+            let popped = 0;
+            let totalPopped = 0;
+            let allPopped = false;
+            let lastPop = 0;
+            const celebrated = new Set();
+            
+            // --- Audio setup (fixed for Safari) ---
+            const POP_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3';
+            const RELOAD_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3';
 
-        let audioCtx = null;
-        let popBuffer = null;
-        let reloadBuffer = null;
-        let audioReady = false;
-        let popBytes = null;
-        let reloadBytes = null;
+            let audioCtx = null;
+            let popBuffer = null;
+            let reloadBuffer = null;
+            let audioReadyPromise = null;
+            let audioUnlocked = false;
 
-        // Грузим байты сразу при старте страницы
-        fetch(POP_URL).then(r => r.arrayBuffer()).then(b => { popBytes = b; tryDecode(); }).catch(()=>{});
-        fetch(RELOAD_URL).then(r => r.arrayBuffer()).then(b => { reloadBytes = b; tryDecode(); }).catch(()=>{});
+            async function initAudio() {
+                if (audioCtx && audioCtx.state !== 'closed') {
+                    if (audioCtx.state === 'suspended') {
+                        await audioCtx.resume();
+                    }
+                    return;
+                }
 
-        function tryDecode() {
-            if (!audioCtx) return;
-            if (popBytes && !popBuffer) {
-                // Safari требует callback-версию decodeAudioData и .slice чтобы не "съесть" буфер
-                audioCtx.decodeAudioData(popBytes.slice(0), buf => { popBuffer = buf; }, err => console.log('pop decode fail', err));
-            }
-            if (reloadBytes && !reloadBuffer) {
-                audioCtx.decodeAudioData(reloadBytes.slice(0), buf => { reloadBuffer = buf; }, err => console.log('reload decode fail', err));
-            }
-        }
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    // Разблокировка через тихий буфер
+                    const silentBuf = audioCtx.createBuffer(1, 1, 22050);
+                    const silentSrc = audioCtx.createBufferSource();
+                    silentSrc.buffer = silentBuf;
+                    silentSrc.connect(audioCtx.destination);
+                    silentSrc.start(0);
+                    
+                    if (audioCtx.state === 'suspended') {
+                        await audioCtx.resume();
+                    }
 
-        function initAudio() {
-            if (audioReady) return;
-            audioReady = true;
-            try {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                // iOS unlock: silent buffer внутри user gesture — СИНХРОННО, без await
-                const silentBuf = audioCtx.createBuffer(1, 1, 22050);
-                const silentSrc = audioCtx.createBufferSource();
-                silentSrc.buffer = silentBuf;
-                silentSrc.connect(audioCtx.destination);
-                silentSrc.start(0);
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                tryDecode();
-            } catch(e) {
-                console.log('AudioContext error:', e);
-            }
-        }
+                    const loadAndDecode = async (url) => {
+                        const response = await fetch(url);
+                        const arrayBuffer = await response.arrayBuffer();
+                        return new Promise((resolve, reject) => {
+                            audioCtx.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
+                        });
+                    };
 
-        function playPopSound() {
-            if (!audioCtx || !popBuffer) return;
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const src = audioCtx.createBufferSource();
-            const gain = audioCtx.createGain();
-            src.buffer = popBuffer;
-            src.playbackRate.value = 0.85 + Math.random() * 0.33;
-            gain.gain.value = 0.7;
-            src.connect(gain);
-            gain.connect(audioCtx.destination);
-            src.start(0);
-        }
+                    [popBuffer, reloadBuffer] = await Promise.all([
+                        loadAndDecode(POP_URL).catch(e => { console.warn('Pop audio failed:', e); return null; }),
+                        loadAndDecode(RELOAD_URL).catch(e => { console.warn('Reload audio failed:', e); return null; })
+                    ]);
 
-        function playReloadSound() {
-            if (!audioCtx || !reloadBuffer) return;
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const src = audioCtx.createBufferSource();
-            const gain = audioCtx.createGain();
-            src.buffer = reloadBuffer;
-            gain.gain.value = 0.7;
-            src.connect(gain);
-            gain.connect(audioCtx.destination);
-            src.start(0);
-        }
-
-        // --- Haptic feedback ---
-        function haptic() {
-            if (navigator.vibrate) {
-                navigator.vibrate(8);
-            }
-            // iOS Taptic Engine via AudioContext (silent click trick)
-            // Already handled by sound; no additional hack needed
-        }
-        
-        document.addEventListener('click', initAudio, { once: false });
-        document.addEventListener('keydown', initAudio, { once: false });
-        // iOS: audio unlock must happen in touchstart WITHOUT preventDefault
-        document.addEventListener('touchstart', () => {
-            if (!audioReady) initAudio();
-        }, { passive: true });
-        
-        // --- Build bubbles ---
-        for (let i = 0; i < TOTAL; i++) {
-            const bubble = document.createElement('div');
-            bubble.className = 'bubble bubble-appear';
-            bubble.dataset.popped = '0';
-            filmWrapper.appendChild(bubble);
-        }
-
-        // --- Mouse drag to pop multiple ---
-        let isMouseDown = false;
-
-        filmWrapper.addEventListener('mousedown', (e) => {
-            isMouseDown = true;
-            initAudio();
-            const target = e.target.closest('.bubble');
-            if (target) {
-                if (target.dataset.popped === '0') popBubble(target);
-                else wiggle(target);
-            }
-        });
-
-        filmWrapper.addEventListener('mousemove', (e) => {
-            if (!isMouseDown) return;
-            const target = e.target.closest('.bubble');
-            if (target && target.dataset.popped === '0') {
-                popBubble(target);
-            }
-        });
-
-        document.addEventListener('mouseup', () => { isMouseDown = false; });
-
-        // --- Touch drag to pop multiple ---
-        filmWrapper.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            initAudio();
-            for (const touch of e.touches) {
-                const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
-                if (el) {
-                    if (el.dataset.popped === '0') popBubble(el);
-                    else wiggle(el);
+                    audioUnlocked = true;
+                } catch (e) {
+                    console.error('Audio init error:', e);
                 }
             }
-        }, { passive: false });
 
-        // Кэшируем последний задетый пузырь для каждого пальца, чтобы не дёргать elementFromPoint впустую
-        const lastTouchedBubble = new Map();
-        filmWrapper.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            for (const touch of e.touches) {
-                const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
-                if (!el) continue;
-                if (lastTouchedBubble.get(touch.identifier) === el) continue;
-                lastTouchedBubble.set(touch.identifier, el);
-                if (el.dataset.popped === '0') popBubble(el);
+            async function ensureAudioReady() {
+                if (!audioReadyPromise) {
+                    audioReadyPromise = initAudio();
+                }
+                await audioReadyPromise;
             }
-        }, { passive: false });
 
-        filmWrapper.addEventListener('touchend', (e) => {
-            for (const touch of e.changedTouches) lastTouchedBubble.delete(touch.identifier);
-        });
-
-        // --- Keyboard ---
-        document.onkeydown = (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                initAudio();
-                const unpopped = [...document.querySelectorAll('.bubble[data-popped="0"]')];
-                if (unpopped.length) popBubble(unpopped[Math.random() * unpopped.length | 0]);
+            function playPopSound() {
+                if (!audioCtx || !popBuffer) return;
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const src = audioCtx.createBufferSource();
+                const gain = audioCtx.createGain();
+                src.buffer = popBuffer;
+                src.playbackRate.value = 0.85 + Math.random() * 0.33;
+                gain.gain.value = 0.7;
+                src.connect(gain);
+                gain.connect(audioCtx.destination);
+                src.start(0);
             }
-        };
 
-        function wiggle(bubble) {
-            bubble.classList.remove('bubble-pulse');
-            void bubble.offsetWidth;
-            bubble.classList.add('bubble-pulse');
-            setTimeout(() => bubble.classList.remove('bubble-pulse'), 300);
-        }
-        
-        function popBubble(bubble) {
-            const now = Date.now();
-            if (now - lastPop < 20) return;
-            lastPop = now;
-            
-            bubble.classList.add('popped');
-            bubble.classList.remove('bubble-appear');
-            bubble.dataset.popped = '1';
-            
-            popped++;
-            totalPopped++;
-            poppedCountEl.textContent = totalPopped;
-            
-            haptic();
+            function playReloadSound() {
+                if (!audioCtx || !reloadBuffer) return;
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const src = audioCtx.createBufferSource();
+                const gain = audioCtx.createGain();
+                src.buffer = reloadBuffer;
+                gain.gain.value = 0.7;
+                src.connect(gain);
+                gain.connect(audioCtx.destination);
+                src.start(0);
+            }
 
-            MILESTONES.forEach(m => {
-                if (!celebrated.has(m) && totalPopped >= m) {
-                    celebrated.add(m);
-                    celebrate(m);
+            // --- Haptic feedback ---
+            function haptic() {
+                if (navigator.vibrate) navigator.vibrate(8);
+            }
+
+            // --- Build bubbles ---
+            for (let i = 0; i < TOTAL; i++) {
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble bubble-appear';
+                bubble.dataset.popped = '0';
+                filmWrapper.appendChild(bubble);
+            }
+
+            // --- Interaction handlers ---
+            let isMouseDown = false;
+
+            async function handlePop(bubble) {
+                const now = Date.now();
+                if (now - lastPop < 20) return;
+                lastPop = now;
+
+                await ensureAudioReady();
+
+                bubble.classList.add('popped');
+                bubble.classList.remove('bubble-appear');
+                bubble.dataset.popped = '1';
+
+                popped++;
+                totalPopped++;
+                poppedCountEl.textContent = totalPopped;
+
+                haptic();
+
+                MILESTONES.forEach(m => {
+                    if (!celebrated.has(m) && totalPopped >= m) {
+                        celebrated.add(m);
+                        celebrate(m);
+                    }
+                });
+
+                playPopSound();
+
+                if (popped === TOTAL && !allPopped) {
+                    allPopped = true;
+                    setTimeout(async () => {
+                        await ensureAudioReady();
+                        playReloadSound();
+                        document.querySelectorAll('.bubble').forEach(b => {
+                            b.classList.remove('popped', 'bubble-pulse');
+                            b.classList.add('bubble-appear');
+                            b.dataset.popped = '0';
+                        });
+                        popped = 0;
+                        allPopped = false;
+                    }, 300);
+                }
+            }
+
+            function wiggle(bubble) {
+                bubble.classList.remove('bubble-pulse');
+                void bubble.offsetWidth;
+                bubble.classList.add('bubble-pulse');
+                setTimeout(() => bubble.classList.remove('bubble-pulse'), 300);
+            }
+
+            // Mouse
+            filmWrapper.addEventListener('mousedown', (e) => {
+                isMouseDown = true;
+                const target = e.target.closest('.bubble');
+                if (target) {
+                    if (target.dataset.popped === '0') handlePop(target);
+                    else wiggle(target);
                 }
             });
-            
-            playPopSound();
-            
-            if (popped === TOTAL && !allPopped) {
-                allPopped = true;
-                setTimeout(() => {
-                    playReloadSound();
-                    document.querySelectorAll('.bubble').forEach(b => {
-                        b.classList.remove('popped', 'bubble-pulse');
-                        b.classList.add('bubble-appear');
-                        b.dataset.popped = '0';
+
+            filmWrapper.addEventListener('mousemove', (e) => {
+                if (!isMouseDown) return;
+                const target = e.target.closest('.bubble');
+                if (target && target.dataset.popped === '0') {
+                    handlePop(target);
+                }
+            });
+
+            document.addEventListener('mouseup', () => { isMouseDown = false; });
+
+            // Touch
+            filmWrapper.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                for (const touch of e.touches) {
+                    const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
+                    if (el) {
+                        if (el.dataset.popped === '0') handlePop(el);
+                        else wiggle(el);
+                    }
+                }
+            }, { passive: false });
+
+            const lastTouchedBubble = new Map();
+            filmWrapper.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                for (const touch of e.touches) {
+                    const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
+                    if (!el) continue;
+                    if (lastTouchedBubble.get(touch.identifier) === el) continue;
+                    lastTouchedBubble.set(touch.identifier, el);
+                    if (el.dataset.popped === '0') handlePop(el);
+                }
+            }, { passive: false });
+
+            filmWrapper.addEventListener('touchend', (e) => {
+                for (const touch of e.changedTouches) lastTouchedBubble.delete(touch.identifier);
+            });
+
+            // Keyboard
+            document.onkeydown = (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    const unpopped = [...document.querySelectorAll('.bubble[data-popped="0"]')];
+                    if (unpopped.length) handlePop(unpopped[Math.random() * unpopped.length | 0]);
+                }
+            };
+
+            // --- Confetti celebration ---
+            function celebrate(milestone) {
+                const count = milestone === 100 ? 30 : milestone === 1000 ? 50 : 80;
+                const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ff8e53', '#9b59b6', '#3498db'];
+                
+                for (let i = 0; i < count; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.cssText = `
+                        --c: ${colors[i % colors.length]};
+                        left: ${Math.random() * 100}vw;
+                        width: ${Math.random() * 10 + 6}px;
+                        height: ${Math.random() * 10 + 6}px;
+                        border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+                    `;
+                    document.body.appendChild(confetti);
+                    const anim = confetti.animate([
+                        { top: '-20px', opacity: 0, transform: 'rotate(0deg)' },
+                        { top: `${Math.random() * 80 + 10}vh`, opacity: 1, transform: `rotate(${Math.random() * 360}deg)` },
+                        { top: '120vh', opacity: 0, transform: `rotate(${Math.random() * 720}deg)` }
+                    ], {
+                        duration: Math.random() * 2000 + 1500,
+                        easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)'
                     });
-                    popped = 0;
-                    allPopped = false;
-                }, 300);
+                    anim.onfinish = () => confetti.remove();
+                }
             }
-        }
-        
-        function celebrate(milestone) {
-            const count = milestone === 100 ? 30 : milestone === 1000 ? 50 : 80;
-            const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ff8e53', '#9b59b6', '#3498db'];
-            
-            for (let i = 0; i < count; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.cssText = `
-                    --c: ${colors[i % colors.length]};
-                    left: ${Math.random() * 100}vw;
-                    width: ${Math.random() * 10 + 6}px;
-                    height: ${Math.random() * 10 + 6}px;
-                    border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
-                `;
-                document.body.appendChild(confetti);
-                const anim = confetti.animate([
-                    { top: '-20px', opacity: 0, transform: 'rotate(0deg)' },
-                    { top: `${Math.random() * 80 + 10}vh`, opacity: 1, transform: `rotate(${Math.random() * 360}deg)` },
-                    { top: '120vh', opacity: 0, transform: `rotate(${Math.random() * 720}deg)` }
-                ], {
-                    duration: Math.random() * 2000 + 1500,
-                    easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)'
-                });
-                anim.onfinish = () => confetti.remove();
-            }
-        }
+        })();
     </script>
     <!-- Yandex.Metrika counter -->
-<script type="text/javascript">
-    (function(m,e,t,r,i,k,a){
-        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-        m[i].l=1*new Date();
-        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105846768', 'ym');
-    ym(105846768, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
-</script>
-<noscript><div><img src="https://mc.yandex.ru/watch/105846768" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-<!-- /Yandex.Metrika counter -->
+    <script type="text/javascript">
+        (function(m,e,t,r,i,k,a){
+            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+            m[i].l=1*new Date();
+            for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+        })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105846768', 'ym');
+        ym(105846768, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/105846768" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <!-- /Yandex.Metrika counter -->
 </body>
 </html>
