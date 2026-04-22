@@ -337,15 +337,22 @@
         }
         
         function loadSound(url, type) {
-            fetch(url)
-                .then(r => r.arrayBuffer())
-                .then(buf => audioContext.decodeAudioData(buf))
-                .then(audioBuf => {
-                    if (type === 'pop') popSoundBuffer = audioBuf;
-                    else if (type === 'reload') reloadSoundBuffer = audioBuf;
-                })
-                .catch(e => console.log("Ошибка загрузки звука:", e));
-        }
+    fetch(url)
+        .then(r => {
+            console.log('fetch ok:', url, r.status, r.headers.get('content-type'));
+            return r.arrayBuffer();
+        })
+        .then(buf => {
+            console.log('arrayBuffer size:', buf.byteLength);
+            return audioContext.decodeAudioData(buf);
+        })
+        .then(audioBuf => {
+            console.log('decoded ok:', type, audioBuf.duration);
+            if (type === 'pop') popSoundBuffer = audioBuf;
+            else if (type === 'reload') reloadSoundBuffer = audioBuf;
+        })
+        .catch(e => console.log("Ошибка:", e.name, e.message, e));
+}
         
         // Random pitch: playbackRate в диапазоне [minRate, maxRate]
         function playSound(buffer, volume = 0.7, pitchMin = 0.85, pitchMax = 1.18) {
