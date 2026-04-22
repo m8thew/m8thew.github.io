@@ -101,7 +101,7 @@
             const themeToggle = document.getElementById('themeToggle');
             const html = document.documentElement;
             
-            // Тема
+            // Theme
             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const savedTheme = localStorage.getItem('theme') || (systemDark ? 'dark' : 'light');
             html.setAttribute('data-theme', savedTheme);
@@ -111,33 +111,35 @@
                 localStorage.setItem('theme', next);
             });
 
-            // Игра
+            // Game constants
             const ROWS = 9, COLS = 9, TOTAL = ROWS * COLS;
             const MILESTONES = [100, 1000, 10000];
             let popped = 0, totalPopped = 0, allPopped = false, lastPop = 0;
             const celebrated = new Set();
 
-            // Аудио
+            // Audio: предзагрузка и инициализация по жесту
             const POP_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3';
             const RELOAD_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3';
             
             let audioCtx = null;
             let popBuffer = null;
             let reloadBuffer = null;
-            let audioInitialized = false;
+            let audioUnlocked = false;
+            
+            let popBufferPromise = null;
+            let reloadBufferPromise = null;
+            
+            // Предзагружаем ArrayBuffer'ы
             let popArrayBuffer = null;
             let reloadArrayBuffer = null;
             
-            // Предзагрузка ArrayBuffer
-            fetch(POP_URL).then(r => r.arrayBuffer()).then(b => popArrayBuffer = b).catch(e => console.warn('pop fetch error', e));
-            fetch(RELOAD_URL).then(r => r.arrayBuffer()).then(b => reloadArrayBuffer = b).catch(e => console.warn('reload fetch error', e));
+            fetch(POP_URL).then(r => r.arrayBuffer()).then(b => { popArrayBuffer = b; }).catch(e => console.warn('pop fetch error', e));
+            fetch(RELOAD_URL).then(r => r.arrayBuffer()).then(b => { reloadArrayBuffer = b; }).catch(e => console.warn('reload fetch error', e));
 
-            // Инициализация аудио при первом взаимодействии
-            function initAudio() {
-                if (audioInitialized) return;
+            function unlockAudio() {
+                if (audioUnlocked) return;
                 try {
                     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    // Разблокировка
                     const silentBuf = audioCtx.createBuffer(1, 1, 22050);
                     const source = audioCtx.createBufferSource();
                     source.buffer = silentBuf;
@@ -146,59 +148,107 @@
                     if (audioCtx.state === 'suspended') {
                         audioCtx.resume();
                     }
-                    audioInitialized = true;
+                    audioUnlocked = true;
                     
-                    // Декодирование предзагруженных данных
                     if (popArrayBuffer) {
-                        audioCtx.decodeAudioData(popArrayBuffer.slice(0), (buf) => { popBuffer = buf; }, (err) => console.warn('pop decode error', err));
-                    } else {
-                        // Если по какой-то причине массив ещё не загружен, пробуем загрузить сейчас
-                        fetch(POP_URL).then(r => r.arrayBuffer()).then(b => {
-                            audioCtx.decodeAudioData(b.slice(0), (buf) => { popBuffer = buf; });
+                        popBufferPromise = new Promise((resolve) => {
+                            audioCtx.decodeAudioData(popArrayBuffer.slice(0), (buf) => {
+                                popBuffer = buf;
+                                resolve(buf);
+                            }, (err) => {
+                                console.warn('pop decode error', err);
+                                resolve(null);
+                            });
                         });
+                    } else {
+                        popBufferPromise = fetch(POP_URL)
+                            .then(r => r.arrayBuffer())
+                            .then(buf => new Promise((resolve) => {
+                                audioCtx.decodeAudioData(buf.slice(0), (decoded) => {
+                                    popBuffer = decoded;
+                                    resolve(decoded);
+                                }, () => resolve(null));
+                            }));
                     }
+                    
                     if (reloadArrayBuffer) {
-                        audioCtx.decodeAudioData(reloadArrayBuffer.slice(0), (buf) => { reloadBuffer = buf; });
-                    } else {
-                        fetch(RELOAD_URL).then(r => r.arrayBuffer()).then(b => {
-                            audioCtx.decodeAudioData(b.slice(0), (buf) => { reloadBuffer = buf; });
+                        reloadBufferPromise = new Promise((resolve) => {
+                            audioCtx.decodeAudioData(reloadArrayBuffer.slice(0), (buf) => {
+                                reloadBuffer = buf;
+                                resolve(buf);
+                            }, (err) => {
+                                console.warn('reload decode error', err);
+                                resolve(null);
+                            });
                         });
+                    } else {
+                        reloadBufferPromise = fetch(RELOAD_URL)
+                            .then(r => r.arrayBuffer())
+                            .then(buf => new Promise((resolve) => {
+                                audioCtx.decodeAudioData(buf.slice(0), (decoded) => {
+                                    reloadBuffer = decoded;
+                                    resolve(decoded);
+                                }, () => resolve(null));
+                            }));
                     }
                 } catch(e) {
-                    console.error('Audio init error:', e);
+                    console.error('Audio unlock error:', e);
                 }
             }
 
-            function playPopSound() {
-                if (!audioCtx || !popBuffer) return;
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                const src = audioCtx.createBufferSource();
-                const gain = audioCtx.createGain();
-                src.buffer = popBuffer;
-                src.playbackRate.value = 0.85 + Math.random() * 0.33;
-                gain.gain.value = 0.7;
-                src.connect(gain);
-                gain.connect(audioCtx.destination);
-                src.start(0);
+            async function playPopSound() {
+                if (!audioCtx) return;
+                if (audioCtx.state === 'suspended') await audioCtx.resume();
+                
+                if (!popBuffer && popBufferPromise) {
+                    try {
+                        await Promise.race([
+                            popBufferPromise,
+                            new Promise(r => setTimeout(r, 500))
+                        ]);
+                    } catch(e) {}
+                }
+                
+                if (popBuffer) {
+                    const src = audioCtx.createBufferSource();
+                    const gain = audioCtx.createGain();
+                    src.buffer = popBuffer;
+                    src.playbackRate.value = 0.85 + Math.random() * 0.33;
+                    gain.gain.value = 0.7;
+                    src.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    src.start(0);
+                }
             }
 
-            function playReloadSound() {
-                if (!audioCtx || !reloadBuffer) return;
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                const src = audioCtx.createBufferSource();
-                const gain = audioCtx.createGain();
-                src.buffer = reloadBuffer;
-                gain.gain.value = 0.7;
-                src.connect(gain);
-                gain.connect(audioCtx.destination);
-                src.start(0);
+            async function playReloadSound() {
+                if (!audioCtx) return;
+                if (audioCtx.state === 'suspended') await audioCtx.resume();
+                
+                if (!reloadBuffer && reloadBufferPromise) {
+                    try {
+                        await Promise.race([
+                            reloadBufferPromise,
+                            new Promise(r => setTimeout(r, 500))
+                        ]);
+                    } catch(e) {}
+                }
+                
+                if (reloadBuffer) {
+                    const src = audioCtx.createBufferSource();
+                    const gain = audioCtx.createGain();
+                    src.buffer = reloadBuffer;
+                    gain.gain.value = 0.7;
+                    src.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    src.start(0);
+                }
             }
 
             function haptic() {
                 if (navigator.vibrate) navigator.vibrate(8);
             }
 
-            // Создаём пузырьки
             for (let i = 0; i < TOTAL; i++) {
                 const bubble = document.createElement('div');
                 bubble.className = 'bubble bubble-appear';
@@ -208,13 +258,12 @@
 
             let isMouseDown = false;
 
-            function handlePop(bubble) {
+            async function handlePop(bubble) {
                 const now = Date.now();
                 if (now - lastPop < 20) return;
                 lastPop = now;
 
-                // Инициализируем аудио, если ещё нет
-                if (!audioInitialized) initAudio();
+                if (!audioUnlocked) unlockAudio();
 
                 bubble.classList.add('popped');
                 bubble.classList.remove('bubble-appear');
@@ -225,8 +274,6 @@
                 poppedCountEl.textContent = totalPopped;
 
                 haptic();
-                
-                // Воспроизводим звук (если буфер ещё не готов, звука не будет, но это только первый раз)
                 playPopSound();
 
                 MILESTONES.forEach(m => {
@@ -239,6 +286,7 @@
                 if (popped === TOTAL && !allPopped) {
                     allPopped = true;
                     setTimeout(() => {
+                        if (!audioUnlocked) unlockAudio();
                         playReloadSound();
                         document.querySelectorAll('.bubble').forEach(b => {
                             b.classList.remove('popped', 'bubble-pulse');
@@ -258,7 +306,6 @@
                 setTimeout(() => bubble.classList.remove('bubble-pulse'), 300);
             }
 
-            // Мышь
             filmWrapper.addEventListener('mousedown', (e) => {
                 isMouseDown = true;
                 const target = e.target.closest('.bubble');
@@ -274,10 +321,9 @@
             });
             document.addEventListener('mouseup', () => { isMouseDown = false; });
 
-            // Касания
             filmWrapper.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                if (!audioInitialized) initAudio(); // важно: синхронно в жесте
+                if (!audioUnlocked) unlockAudio();
                 for (const touch of e.touches) {
                     const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
                     if (el) {
@@ -302,17 +348,15 @@
                 for (const touch of e.changedTouches) lastTouchedBubble.delete(touch.identifier);
             });
 
-            // Клавиатура
             document.onkeydown = (e) => {
                 if (e.code === 'Space') {
                     e.preventDefault();
-                    if (!audioInitialized) initAudio();
+                    if (!audioUnlocked) unlockAudio();
                     const unpopped = [...document.querySelectorAll('.bubble[data-popped="0"]')];
                     if (unpopped.length) handlePop(unpopped[Math.random() * unpopped.length | 0]);
                 }
             };
 
-            // Конфетти
             function celebrate(milestone) {
                 const count = milestone === 100 ? 30 : milestone === 1000 ? 50 : 80;
                 const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ff8e53', '#9b59b6', '#3498db'];
