@@ -337,7 +337,7 @@
         }
         
         function loadSound(url, type) {
-    fetch(url)
+    fetch(url, { headers: { 'Accept': 'audio/mpeg, audio/*' } })
         .then(r => {
             console.log('fetch ok:', url, r.status, r.headers.get('content-type'));
             return r.arrayBuffer();
