@@ -1,11 +1,47 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <title>чпок</title>
     <style>
+        :root {
+            --bg: #fff;
+            --text: #000;
+            --subtext: #666;
+            --film-bg: #f5f5f5;
+            --film-border: #e8e8e8;
+            --bubble-bg: #fff;
+            --bubble-popped: #f0f0f0;
+            --bubble-shadow-inset: rgba(0,0,0,0.1);
+            --bubble-shadow-inset2: rgba(0,0,0,0.08);
+            --bubble-shadow: rgba(0,0,0,0.06);
+            --bubble-popped-inset: rgba(0,0,0,0.05);
+            --bubble-popped-shadow: rgba(0,0,0,0.03);
+            --toggle-bg: #e0e0e0;
+            --toggle-knob: #fff;
+            --toggle-active: #000;
+        }
+
+        [data-theme="dark"] {
+            --bg: #111;
+            --text: #f0f0f0;
+            --subtext: #888;
+            --film-bg: #1e1e1e;
+            --film-border: #2a2a2a;
+            --bubble-bg: #2c2c2c;
+            --bubble-popped: #1a1a1a;
+            --bubble-shadow-inset: rgba(255,255,255,0.07);
+            --bubble-shadow-inset2: rgba(0,0,0,0.3);
+            --bubble-shadow: rgba(0,0,0,0.3);
+            --bubble-popped-inset: rgba(255,255,255,0.03);
+            --bubble-popped-shadow: rgba(0,0,0,0.2);
+            --toggle-bg: #333;
+            --toggle-knob: #111;
+            --toggle-active: #f0f0f0;
+        }
+
         * { 
             margin: 0; 
             padding: 0; 
@@ -16,8 +52,8 @@
         
         body { 
             font-family: -apple-system, sans-serif; 
-            background: #fff; 
-            color: #000; 
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh; 
             display: flex; 
             flex-direction: column; 
@@ -28,6 +64,7 @@
             touch-action: manipulation;
             position: relative;
             overflow-x: hidden;
+            transition: background 0.25s, color 0.25s;
         }
         
         .container { 
@@ -43,13 +80,14 @@
         }
         
         .film-container {
-            background: #f5f5f5;
+            background: var(--film-bg);
             border-radius: 32px;
             padding: 20px;
             max-width: 600px;
             width: 100%;
             box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-            border: 1px solid #e8e8e8;
+            border: 1px solid var(--film-border);
+            transition: background 0.25s, border-color 0.25s;
         }
         
         .film-wrapper { 
@@ -63,14 +101,15 @@
         .bubble { 
             width: 100%; 
             aspect-ratio: 1/1; 
-            background: #fff; 
+            background: var(--bubble-bg);
             border-radius: 50%; 
             cursor: pointer; 
             position: relative; 
             box-shadow: 
-                inset 0 0 0 1px rgba(0,0,0,0.1),
-                inset 0 -2px 4px rgba(0,0,0,0.08), 
-                0 2px 4px rgba(0,0,0,0.06);
+                inset 0 0 0 1px var(--bubble-shadow-inset),
+                inset 0 -2px 4px var(--bubble-shadow-inset2), 
+                0 2px 4px var(--bubble-shadow);
+            transition: background 0.25s, box-shadow 0.25s;
         }
         
         .bubble:before { 
@@ -82,6 +121,10 @@
             height: 35%; 
             background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.95) 0%, transparent 70%); 
             border-radius: 50%; 
+        }
+
+        [data-theme="dark"] .bubble:before {
+            background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.15) 0%, transparent 70%);
         }
         
         .bubble:after { 
@@ -95,13 +138,22 @@
             border-radius: 50%; 
             filter: blur(1px); 
         }
+
+        [data-theme="dark"] .bubble:after {
+            background: rgba(255,255,255,0.12);
+        }
         
         .bubble.popped { 
-            background: #f0f0f0; 
+            background: var(--bubble-popped);
             transform: scale(0.7);
             box-shadow: 
-                inset 0 0 0 1px rgba(0,0,0,0.05), 
-                0 1px 2px rgba(0,0,0,0.03); 
+                inset 0 0 0 1px var(--bubble-popped-inset), 
+                0 1px 2px var(--bubble-popped-shadow);
+        }
+
+        .bubble.popped:before,
+        .bubble.popped:after {
+            display: none;
         }
         
         @keyframes bubbleAppear {
@@ -126,11 +178,12 @@
         
         .info-bar { 
             font-size: 13px; 
-            color: #666; 
+            color: var(--subtext);
             margin-top: 20px; 
             width: 100%; 
             text-align: center; 
-            line-height: 1.4; 
+            line-height: 1.4;
+            transition: color 0.25s;
         }
         
         .info-text { 
@@ -145,8 +198,39 @@
         }
         
         .stats { 
-            color: #000; 
+            color: var(--text);
             font-weight: 500; 
+        }
+
+        /* Dark mode toggle */
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            cursor: pointer;
+            border: 1px solid currentColor;
+            border-radius: 20px;
+            overflow: hidden;
+            opacity: 0.45;
+            transition: opacity 0.2s;
+            font-size: 11px;
+            letter-spacing: 0.02em;
+        }
+
+        .theme-toggle:hover {
+            opacity: 0.9;
+        }
+
+        .toggle-opt {
+            padding: 2px 7px;
+            transition: background 0.2s, color 0.2s;
+            line-height: 1.6;
+        }
+
+        [data-theme="light"] .toggle-opt-light,
+        [data-theme="dark"]  .toggle-opt-dark {
+            background: var(--text);
+            color: var(--bg);
         }
         
         .confetti {
@@ -176,7 +260,7 @@
                 padding: 14px; 
                 border-radius: 24px; 
             } 
-            .info-text { flex-direction: column; gap: 4px; } 
+            .info-text { flex-direction: column; gap: 6px; } 
             .separator { display: none; } 
         }
     </style>
@@ -192,9 +276,13 @@
             <div class="info-text">
                 <span class="stats">чпокнуто: <span id="poppedCount">0</span></span>
                 <span class="separator">|</span>
-                <span>нажми на пробел или пузырик для чпоканья. версия 2.0 уже в работе, я видел ваши комменты.</span>
+                <span>нажми на пробел или пузырик для чпоканья</span>
                 <span class="separator">|</span>
                 <span>created by <a href="https://t.me/envctx" target="_blank" style="color: #1E90FF; text-decoration: none;">@m8thew</a></span>
+                <span class="separator">|</span>
+                <span class="theme-toggle" id="themeToggle" title="сменить тему">
+                    <span class="toggle-opt toggle-opt-light">свет</span><span class="toggle-opt toggle-opt-dark">тьма</span>
+                </span>
             </div>
         </div>
     </div>
@@ -202,7 +290,23 @@
     <script>
         const filmWrapper = document.getElementById('filmWrapper');
         const poppedCountEl = document.getElementById('poppedCount');
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
         
+        // --- Theme toggle ---
+        // Берём сохранённую тему; если не было — смотрим системную (prefers-color-scheme)
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const savedTheme = localStorage.getItem('theme') || (systemDark ? 'dark' : 'light');
+        html.setAttribute('data-theme', savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const current = html.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+
+        // --- Game constants ---
         const ROWS = 9;
         const COLS = 9;
         const TOTAL = ROWS * COLS;
@@ -214,6 +318,7 @@
         let lastPop = 0;
         const celebrated = new Set();
         
+        // --- Audio ---
         let audioContext;
         let popSoundBuffer;
         let reloadSoundBuffer;
@@ -221,13 +326,10 @@
         
         function initAudio() {
             if (audioInitialized) return;
-            
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
                 loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpok.mp3', 'pop');
                 loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3', 'reload');
-                
                 audioInitialized = true;
             } catch (e) {
                 console.log("Web Audio API не поддерживается");
@@ -236,84 +338,104 @@
         
         function loadSound(url, type) {
             fetch(url)
-                .then(response => response.arrayBuffer())
-                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
-                .then(audioBuffer => {
-                    if (type === 'pop') {
-                        popSoundBuffer = audioBuffer;
-                    } else if (type === 'reload') {
-                        reloadSoundBuffer = audioBuffer;
-                    }
+                .then(r => r.arrayBuffer())
+                .then(buf => audioContext.decodeAudioData(buf))
+                .then(audioBuf => {
+                    if (type === 'pop') popSoundBuffer = audioBuf;
+                    else if (type === 'reload') reloadSoundBuffer = audioBuf;
                 })
                 .catch(e => console.log("Ошибка загрузки звука:", e));
         }
         
-        function playSound(buffer, volume = 0.7) {
+        // Random pitch: playbackRate в диапазоне [minRate, maxRate]
+        function playSound(buffer, volume = 0.7, pitchMin = 0.85, pitchMax = 1.18) {
             if (!audioContext || !buffer) return;
-            
             try {
                 const source = audioContext.createBufferSource();
                 const gainNode = audioContext.createGain();
-                
                 source.buffer = buffer;
                 gainNode.gain.value = volume;
-                
+                source.playbackRate.value = pitchMin + Math.random() * (pitchMax - pitchMin);
                 source.connect(gainNode);
                 gainNode.connect(audioContext.destination);
-                
                 source.start(0);
-                
                 setTimeout(() => {
                     source.disconnect();
                     gainNode.disconnect();
-                }, buffer.duration * 1000);
+                }, buffer.duration * 1000 + 200);
             } catch (e) {
                 console.log("Ошибка воспроизведения звука");
             }
         }
+
+        // --- Haptic feedback ---
+        function haptic() {
+            if (navigator.vibrate) {
+                navigator.vibrate(8);
+            }
+            // iOS Taptic Engine via AudioContext (silent click trick)
+            // Already handled by sound; no additional hack needed
+        }
         
-        document.addEventListener('click', initAudio);
-        document.addEventListener('touchstart', initAudio);
-        document.addEventListener('keydown', initAudio);
+        document.addEventListener('click', initAudio, { once: false });
+        document.addEventListener('touchstart', initAudio, { once: false });
+        document.addEventListener('keydown', initAudio, { once: false });
         
+        // --- Build bubbles ---
         for (let i = 0; i < TOTAL; i++) {
             const bubble = document.createElement('div');
             bubble.className = 'bubble bubble-appear';
             bubble.dataset.popped = '0';
-            
-            bubble.onclick = (e) => {
-                e.preventDefault();
-                initAudio();
-                if (bubble.dataset.popped === '1') {
-                    bubble.classList.remove('bubble-pulse');
-                    void bubble.offsetWidth;
-                    bubble.classList.add('bubble-pulse');
-                    setTimeout(() => {
-                        bubble.classList.remove('bubble-pulse');
-                    }, 300);
-                }
-                if (bubble.dataset.popped === '0') popBubble(bubble);
-            };
-            
-            bubble.ontouchstart = (e) => {
-                e.preventDefault();
-                initAudio();
-                const touch = e.touches[0];
-                const elem = document.elementFromPoint(touch.clientX, touch.clientY);
-                if (elem?.dataset?.popped === '1') {
-                    elem.classList.remove('bubble-pulse');
-                    void elem.offsetWidth;
-                    elem.classList.add('bubble-pulse');
-                    setTimeout(() => {
-                        elem.classList.remove('bubble-pulse');
-                    }, 300);
-                }
-                if (elem?.dataset?.popped === '0') popBubble(elem);
-            };
-            
             filmWrapper.appendChild(bubble);
         }
-        
+
+        // --- Mouse drag to pop multiple ---
+        let isMouseDown = false;
+
+        filmWrapper.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            initAudio();
+            const target = e.target.closest('.bubble');
+            if (target) {
+                if (target.dataset.popped === '0') popBubble(target);
+                else wiggle(target);
+            }
+        });
+
+        filmWrapper.addEventListener('mousemove', (e) => {
+            if (!isMouseDown) return;
+            const target = e.target.closest('.bubble');
+            if (target && target.dataset.popped === '0') {
+                popBubble(target);
+            }
+        });
+
+        document.addEventListener('mouseup', () => { isMouseDown = false; });
+
+        // --- Touch drag to pop multiple ---
+        filmWrapper.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            initAudio();
+            for (const touch of e.touches) {
+                const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
+                if (el) {
+                    if (el.dataset.popped === '0') popBubble(el);
+                    else wiggle(el);
+                }
+            }
+        }, { passive: false });
+
+        filmWrapper.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (const touch of e.touches) {
+                const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
+                if (el && el.dataset.popped === '0') {
+                    popBubble(el);
+                }
+            }
+        }, { passive: false });
+
+        // --- Keyboard ---
         document.onkeydown = (e) => {
             if (e.code === 'Space') {
                 e.preventDefault();
@@ -322,10 +444,17 @@
                 if (unpopped.length) popBubble(unpopped[Math.random() * unpopped.length | 0]);
             }
         };
+
+        function wiggle(bubble) {
+            bubble.classList.remove('bubble-pulse');
+            void bubble.offsetWidth;
+            bubble.classList.add('bubble-pulse');
+            setTimeout(() => bubble.classList.remove('bubble-pulse'), 300);
+        }
         
         function popBubble(bubble) {
             const now = Date.now();
-            if (now - lastPop < 30) return;
+            if (now - lastPop < 20) return;
             lastPop = now;
             
             bubble.classList.add('popped');
@@ -336,6 +465,8 @@
             totalPopped++;
             poppedCountEl.textContent = totalPopped;
             
+            haptic();
+
             MILESTONES.forEach(m => {
                 if (!celebrated.has(m) && totalPopped >= m) {
                     celebrated.add(m);
@@ -343,20 +474,14 @@
                 }
             });
             
-            if (popSoundBuffer) {
-                playSound(popSoundBuffer, 0.7);
-            }
+            if (popSoundBuffer) playSound(popSoundBuffer, 0.7);
             
             if (popped === TOTAL && !allPopped) {
                 allPopped = true;
                 setTimeout(() => {
-                    if (reloadSoundBuffer) {
-                        playSound(reloadSoundBuffer, 0.7);
-                    }
-                    
+                    if (reloadSoundBuffer) playSound(reloadSoundBuffer, 0.7, 0.95, 1.05);
                     document.querySelectorAll('.bubble').forEach(b => {
-                        b.classList.remove('popped');
-                        b.classList.remove('bubble-pulse');
+                        b.classList.remove('popped', 'bubble-pulse');
                         b.classList.add('bubble-appear');
                         b.dataset.popped = '0';
                     });
@@ -380,9 +505,7 @@
                     height: ${Math.random() * 10 + 6}px;
                     border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
                 `;
-                
                 document.body.appendChild(confetti);
-                
                 const anim = confetti.animate([
                     { top: '-20px', opacity: 0, transform: 'rotate(0deg)' },
                     { top: `${Math.random() * 80 + 10}vh`, opacity: 1, transform: `rotate(${Math.random() * 360}deg)` },
@@ -391,7 +514,6 @@
                     duration: Math.random() * 2000 + 1500,
                     easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)'
                 });
-                
                 anim.onfinish = () => confetti.remove();
             }
         }
@@ -404,7 +526,6 @@
         for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
         k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
     })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105846768', 'ym');
-
     ym(105846768, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
 </script>
 <noscript><div><img src="https://mc.yandex.ru/watch/105846768" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
