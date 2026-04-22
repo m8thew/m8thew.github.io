@@ -315,16 +315,16 @@
             let lastPop = 0;
             const celebrated = new Set();
             
-            // --- Audio setup (fixed for Safari) ---
+            // --- Audio setup (исправлено для iOS — не блокирует тапы) ---
             const POP_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3';
             const RELOAD_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3';
 
             let audioCtx = null;
             let popBuffer = null;
             let reloadBuffer = null;
-            let audioReadyPromise = null;
-            let audioUnlocked = false;
+            let audioInitPromise = null;
 
+            // Инициализация аудио (запускается в фоне, не ждём)
             async function initAudio() {
                 if (audioCtx && audioCtx.state !== 'closed') {
                     if (audioCtx.state === 'suspended') {
@@ -336,7 +336,7 @@
                 try {
                     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     
-                    // Разблокировка через тихий буфер
+                    // Разблокировка
                     const silentBuf = audioCtx.createBuffer(1, 1, 22050);
                     const silentSrc = audioCtx.createBufferSource();
                     silentSrc.buffer = silentBuf;
@@ -359,18 +359,17 @@
                         loadAndDecode(POP_URL).catch(e => { console.warn('Pop audio failed:', e); return null; }),
                         loadAndDecode(RELOAD_URL).catch(e => { console.warn('Reload audio failed:', e); return null; })
                     ]);
-
-                    audioUnlocked = true;
                 } catch (e) {
                     console.error('Audio init error:', e);
                 }
             }
 
-            async function ensureAudioReady() {
-                if (!audioReadyPromise) {
-                    audioReadyPromise = initAudio();
+            // Запускаем инициализацию при первом взаимодействии (но не ждём)
+            function ensureAudioInit() {
+                if (!audioInitPromise) {
+                    audioInitPromise = initAudio();
                 }
-                await audioReadyPromise;
+                // Не возвращаем промис, чтобы не блокировать
             }
 
             function playPopSound() {
@@ -414,12 +413,13 @@
             // --- Interaction handlers ---
             let isMouseDown = false;
 
-            async function handlePop(bubble) {
+            function handlePop(bubble) {
                 const now = Date.now();
                 if (now - lastPop < 20) return;
                 lastPop = now;
 
-                await ensureAudioReady();
+                // Запускаем инициализацию аудио в фоне (если ещё не)
+                ensureAudioInit();
 
                 bubble.classList.add('popped');
                 bubble.classList.remove('bubble-appear');
@@ -442,8 +442,9 @@
 
                 if (popped === TOTAL && !allPopped) {
                     allPopped = true;
-                    setTimeout(async () => {
-                        await ensureAudioReady();
+                    setTimeout(() => {
+                        // При перезарядке тоже запускаем инициализацию (на случай если ещё не готова)
+                        ensureAudioInit();
                         playReloadSound();
                         document.querySelectorAll('.bubble').forEach(b => {
                             b.classList.remove('popped', 'bubble-pulse');
@@ -486,6 +487,8 @@
             // Touch
             filmWrapper.addEventListener('touchstart', (e) => {
                 e.preventDefault();
+                // При первом касании запускаем аудио
+                ensureAudioInit();
                 for (const touch of e.touches) {
                     const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
                     if (el) {
@@ -515,6 +518,7 @@
             document.onkeydown = (e) => {
                 if (e.code === 'Space') {
                     e.preventDefault();
+                    ensureAudioInit();
                     const unpopped = [...document.querySelectorAll('.bubble[data-popped="0"]')];
                     if (unpopped.length) handlePop(unpopped[Math.random() * unpopped.length | 0]);
                 }
