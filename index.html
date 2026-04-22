@@ -6,6 +6,7 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <title>чпок</title>
     <style>
+        /* Стили без изменений */
         :root {
             --bg: #fff;
             --text: #000;
@@ -42,224 +43,34 @@
             --toggle-active: #f0f0f0;
         }
 
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-            user-select: none; 
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        body { 
-            font-family: -apple-system, sans-serif; 
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            padding: 20px; 
-            -webkit-font-smoothing: antialiased; 
-            touch-action: manipulation;
-            position: relative;
-            overflow-x: hidden;
-            transition: background 0.25s, color 0.25s;
-        }
-        
-        .container { 
-            max-width: 800px; 
-            width: 100%; 
-            text-align: center; 
-        }
-        
-        .game-area { 
-            display: flex; 
-            justify-content: center; 
-            margin-bottom: 25px; 
-        }
-        
-        .film-container {
-            background: var(--film-bg);
-            border-radius: 32px;
-            padding: 20px;
-            max-width: 600px;
-            width: 100%;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-            border: 1px solid var(--film-border);
-            transition: background 0.25s, border-color 0.25s;
-        }
-        
-        .film-wrapper { 
-            display: grid; 
-            grid-template-columns: repeat(9, 1fr); 
-            grid-template-rows: repeat(9, 1fr); 
-            gap: 6px; 
-            height: 100%; 
-        }
-        
-        .bubble { 
-            width: 100%; 
-            aspect-ratio: 1/1; 
-            background: var(--bubble-bg);
-            border-radius: 50%; 
-            cursor: pointer; 
-            position: relative; 
-            box-shadow: 
-                inset 0 -2px 3px var(--bubble-shadow-inset2), 
-                0 1px 2px var(--bubble-shadow);
-            transform: translateZ(0);
-        }
-        
-        .bubble:before { 
-            content: ''; 
-            position: absolute; 
-            top: 20%; 
-            left: 20%; 
-            width: 35%; 
-            height: 35%; 
-            background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.95) 0%, transparent 70%); 
-            border-radius: 50%; 
-        }
-
-        [data-theme="dark"] .bubble:before {
-            background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.15) 0%, transparent 70%);
-        }
-        
-        .bubble:after { 
-            content: ''; 
-            position: absolute; 
-            top: 10%; 
-            left: 10%; 
-            width: 15%; 
-            height: 15%; 
-            background: rgba(255,255,255,0.8); 
-            border-radius: 50%; 
-            filter: blur(1px); 
-        }
-
-        [data-theme="dark"] .bubble:after {
-            background: rgba(255,255,255,0.12);
-        }
-        
-        .bubble.popped { 
-            background: var(--bubble-popped);
-            transform: scale(0.7) translateZ(0);
-            box-shadow: none;
-        }
-
-        .bubble.popped:before,
-        .bubble.popped:after {
-            display: none;
-        }
-        
-        @keyframes bubbleAppear {
-            0% { transform: scale(0.5); opacity: 0; }
-            70% { transform: scale(1.05); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(0.7); }
-            50% { transform: scale(0.65); }
-            100% { transform: scale(0.7); }
-        }
-        
-        .bubble-appear {
-            animation: bubbleAppear 0.4s ease forwards;
-        }
-        
-        .bubble-pulse {
-            animation: pulse 0.3s ease;
-        }
-        
-        .info-bar { 
-            font-size: 13px; 
-            color: var(--subtext);
-            margin-top: 20px; 
-            width: 100%; 
-            text-align: center; 
-            line-height: 1.4;
-            transition: color 0.25s;
-        }
-        
-        .info-text { 
-            display: inline-flex; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 10px; 
-        }
-        
-        .separator { 
-            opacity: 0.3; 
-        }
-        
-        .stats { 
-            color: var(--text);
-            font-weight: 500; 
-        }
-
-        /* Dark mode toggle */
-        .theme-toggle {
-            display: inline-flex;
-            align-items: center;
-            gap: 0;
-            cursor: pointer;
-            border: 1px solid currentColor;
-            border-radius: 20px;
-            overflow: hidden;
-            opacity: 0.45;
-            transition: opacity 0.2s;
-            font-size: 11px;
-            letter-spacing: 0.02em;
-        }
-
-        .theme-toggle:hover {
-            opacity: 0.9;
-        }
-
-        .toggle-opt {
-            padding: 2px 7px;
-            transition: background 0.2s, color 0.2s;
-            line-height: 1.6;
-        }
-
-        [data-theme="light"] .toggle-opt-light,
-        [data-theme="dark"]  .toggle-opt-dark {
-            background: var(--text);
-            color: var(--bg);
-        }
-        
-        .confetti {
-            position: fixed;
-            width: 12px;
-            height: 12px;
-            background: var(--c);
-            top: -20px;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 9999;
-        }
-        
-        @media (max-width: 768px) { 
-            .film-wrapper { gap: 5px; } 
-            .film-container { 
-                padding: 16px; 
-                border-radius: 28px;
-            } 
-            .info-bar { font-size: 12px; } 
-        }
-        
-        @media (max-width: 480px) { 
-            body { padding: 16px; } 
-            .film-wrapper { gap: 4px; } 
-            .film-container { 
-                padding: 14px; 
-                border-radius: 24px; 
-            } 
-            .info-text { flex-direction: column; gap: 6px; } 
-            .separator { display: none; } 
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; -webkit-font-smoothing: antialiased; touch-action: manipulation; position: relative; overflow-x: hidden; transition: background 0.25s, color 0.25s; }
+        .container { max-width: 800px; width: 100%; text-align: center; }
+        .game-area { display: flex; justify-content: center; margin-bottom: 25px; }
+        .film-container { background: var(--film-bg); border-radius: 32px; padding: 20px; max-width: 600px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border: 1px solid var(--film-border); transition: background 0.25s, border-color 0.25s; }
+        .film-wrapper { display: grid; grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(9, 1fr); gap: 6px; height: 100%; }
+        .bubble { width: 100%; aspect-ratio: 1/1; background: var(--bubble-bg); border-radius: 50%; cursor: pointer; position: relative; box-shadow: inset 0 -2px 3px var(--bubble-shadow-inset2), 0 1px 2px var(--bubble-shadow); transform: translateZ(0); }
+        .bubble:before { content: ''; position: absolute; top: 20%; left: 20%; width: 35%; height: 35%; background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.95) 0%, transparent 70%); border-radius: 50%; }
+        [data-theme="dark"] .bubble:before { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.15) 0%, transparent 70%); }
+        .bubble:after { content: ''; position: absolute; top: 10%; left: 10%; width: 15%; height: 15%; background: rgba(255,255,255,0.8); border-radius: 50%; filter: blur(1px); }
+        [data-theme="dark"] .bubble:after { background: rgba(255,255,255,0.12); }
+        .bubble.popped { background: var(--bubble-popped); transform: scale(0.7) translateZ(0); box-shadow: none; }
+        .bubble.popped:before, .bubble.popped:after { display: none; }
+        @keyframes bubbleAppear { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes pulse { 0% { transform: scale(0.7); } 50% { transform: scale(0.65); } 100% { transform: scale(0.7); } }
+        .bubble-appear { animation: bubbleAppear 0.4s ease forwards; }
+        .bubble-pulse { animation: pulse 0.3s ease; }
+        .info-bar { font-size: 13px; color: var(--subtext); margin-top: 20px; width: 100%; text-align: center; line-height: 1.4; transition: color 0.25s; }
+        .info-text { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+        .separator { opacity: 0.3; }
+        .stats { color: var(--text); font-weight: 500; }
+        .theme-toggle { display: inline-flex; align-items: center; gap: 0; cursor: pointer; border: 1px solid currentColor; border-radius: 20px; overflow: hidden; opacity: 0.45; transition: opacity 0.2s; font-size: 11px; letter-spacing: 0.02em; }
+        .theme-toggle:hover { opacity: 0.9; }
+        .toggle-opt { padding: 2px 7px; transition: background 0.2s, color 0.2s; line-height: 1.6; }
+        [data-theme="light"] .toggle-opt-light, [data-theme="dark"] .toggle-opt-dark { background: var(--text); color: var(--bg); }
+        .confetti { position: fixed; width: 12px; height: 12px; background: var(--c); top: -20px; opacity: 0; pointer-events: none; z-index: 9999; }
+        @media (max-width: 768px) { .film-wrapper { gap: 5px; } .film-container { padding: 16px; border-radius: 28px; } .info-bar { font-size: 12px; } }
+        @media (max-width: 480px) { body { padding: 16px; } .film-wrapper { gap: 4px; } .film-container { padding: 14px; border-radius: 24px; } .info-text { flex-direction: column; gap: 6px; } .separator { display: none; } }
     </style>
 </head>
 <body>
@@ -275,7 +86,7 @@
                 <span class="separator">|</span>
                 <span>нажми на пробел или пузырик для чпоканья</span>
                 <span class="separator">|</span>
-                <span>created by <a href="https://t.me/envctx" target="_blank" style="color: #1E90FF; text-decoration: none;">@m8thew</a></span>
+                <span>created by <a href="https://t.me/attentionm8thew" target="_blank" style="color: #1E90FF; text-decoration: none;">@m8thew</a></span>
                 <span class="separator">|</span>
                 <span class="theme-toggle" id="themeToggle" title="сменить тему">
                     <span class="toggle-opt toggle-opt-light">свет</span><span class="toggle-opt toggle-opt-dark">тьма</span>
@@ -286,123 +97,135 @@
     
     <script>
         (function(){
+            // --- Элементы и тема ---
             const filmWrapper = document.getElementById('filmWrapper');
             const poppedCountEl = document.getElementById('poppedCount');
             const themeToggle = document.getElementById('themeToggle');
             const html = document.documentElement;
             
-            // --- Theme toggle ---
             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const savedTheme = localStorage.getItem('theme') || (systemDark ? 'dark' : 'light');
             html.setAttribute('data-theme', savedTheme);
-
             themeToggle.addEventListener('click', () => {
-                const current = html.getAttribute('data-theme');
-                const next = current === 'light' ? 'dark' : 'light';
+                const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
                 html.setAttribute('data-theme', next);
                 localStorage.setItem('theme', next);
             });
 
-            // --- Game constants ---
-            const ROWS = 9;
-            const COLS = 9;
-            const TOTAL = ROWS * COLS;
+            // --- Константы игры ---
+            const ROWS = 9, COLS = 9, TOTAL = ROWS * COLS;
             const MILESTONES = [100, 1000, 10000];
-            
-            let popped = 0;
-            let totalPopped = 0;
-            let allPopped = false;
-            let lastPop = 0;
+            let popped = 0, totalPopped = 0, allPopped = false, lastPop = 0;
             const celebrated = new Set();
-            
-            // --- Audio setup (исправлено для iOS — не блокирует тапы) ---
+
+            // --- Аудио: предзагрузка ArrayBuffer, инициализация по жесту ---
             const POP_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3';
             const RELOAD_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3';
-
+            
             let audioCtx = null;
             let popBuffer = null;
             let reloadBuffer = null;
-            let audioInitPromise = null;
+            let audioUnlocked = false;
+            
+            // Предзагружаем сырые байты при загрузке страницы
+            let popArrayBuffer = null;
+            let reloadArrayBuffer = null;
+            
+            fetch(POP_URL).then(r => r.arrayBuffer()).then(b => popArrayBuffer = b).catch(e => console.warn('pop fetch error', e));
+            fetch(RELOAD_URL).then(r => r.arrayBuffer()).then(b => reloadArrayBuffer = b).catch(e => console.warn('reload fetch error', e));
 
-            // Инициализация аудио (запускается в фоне, не ждём)
-            async function initAudio() {
-                if (audioCtx && audioCtx.state !== 'closed') {
-                    if (audioCtx.state === 'suspended') {
-                        await audioCtx.resume();
-                    }
-                    return;
-                }
-
+            // Создание и разблокировка AudioContext (вызывается синхронно в жесте)
+            function unlockAudio() {
+                if (audioUnlocked) return;
                 try {
                     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    
-                    // Разблокировка
+                    // Разблокировка тихим буфером
                     const silentBuf = audioCtx.createBuffer(1, 1, 22050);
-                    const silentSrc = audioCtx.createBufferSource();
-                    silentSrc.buffer = silentBuf;
-                    silentSrc.connect(audioCtx.destination);
-                    silentSrc.start(0);
-                    
+                    const source = audioCtx.createBufferSource();
+                    source.buffer = silentBuf;
+                    source.connect(audioCtx.destination);
+                    source.start(0);
                     if (audioCtx.state === 'suspended') {
-                        await audioCtx.resume();
+                        audioCtx.resume();
                     }
-
-                    const loadAndDecode = async (url) => {
-                        const response = await fetch(url);
-                        const arrayBuffer = await response.arrayBuffer();
-                        return new Promise((resolve, reject) => {
-                            audioCtx.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
-                        });
-                    };
-
-                    [popBuffer, reloadBuffer] = await Promise.all([
-                        loadAndDecode(POP_URL).catch(e => { console.warn('Pop audio failed:', e); return null; }),
-                        loadAndDecode(RELOAD_URL).catch(e => { console.warn('Reload audio failed:', e); return null; })
-                    ]);
-                } catch (e) {
-                    console.error('Audio init error:', e);
+                    audioUnlocked = true;
+                    
+                    // Запускаем декодирование предзагруженных буферов (в фоне)
+                    if (popArrayBuffer) {
+                        audioCtx.decodeAudioData(popArrayBuffer.slice(0), (buf) => { popBuffer = buf; }, (err) => console.warn('pop decode error', err));
+                    }
+                    if (reloadArrayBuffer) {
+                        audioCtx.decodeAudioData(reloadArrayBuffer.slice(0), (buf) => { reloadBuffer = buf; }, (err) => console.warn('reload decode error', err));
+                    }
+                } catch(e) {
+                    console.error('Audio unlock error:', e);
                 }
             }
 
-            // Запускаем инициализацию при первом взаимодействии (но не ждём)
-            function ensureAudioInit() {
-                if (!audioInitPromise) {
-                    audioInitPromise = initAudio();
-                }
-                // Не возвращаем промис, чтобы не блокировать
-            }
-
+            // Воспроизведение: если буфер готов — Web Audio, иначе синтезируем "чпок" осциллятором
             function playPopSound() {
-                if (!audioCtx || !popBuffer) return;
+                if (!audioCtx) return;
                 if (audioCtx.state === 'suspended') audioCtx.resume();
-                const src = audioCtx.createBufferSource();
-                const gain = audioCtx.createGain();
-                src.buffer = popBuffer;
-                src.playbackRate.value = 0.85 + Math.random() * 0.33;
-                gain.gain.value = 0.7;
-                src.connect(gain);
-                gain.connect(audioCtx.destination);
-                src.start(0);
+                
+                if (popBuffer) {
+                    const src = audioCtx.createBufferSource();
+                    const gain = audioCtx.createGain();
+                    src.buffer = popBuffer;
+                    src.playbackRate.value = 0.85 + Math.random() * 0.33;
+                    gain.gain.value = 0.7;
+                    src.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    src.start(0);
+                } else {
+                    // Fallback-звук через Oscillator (короткий щелчок)
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = 800 + Math.random() * 400;
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.08);
+                }
             }
 
             function playReloadSound() {
-                if (!audioCtx || !reloadBuffer) return;
+                if (!audioCtx) return;
                 if (audioCtx.state === 'suspended') audioCtx.resume();
-                const src = audioCtx.createBufferSource();
-                const gain = audioCtx.createGain();
-                src.buffer = reloadBuffer;
-                gain.gain.value = 0.7;
-                src.connect(gain);
-                gain.connect(audioCtx.destination);
-                src.start(0);
+                if (reloadBuffer) {
+                    const src = audioCtx.createBufferSource();
+                    const gain = audioCtx.createGain();
+                    src.buffer = reloadBuffer;
+                    gain.gain.value = 0.7;
+                    src.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    src.start(0);
+                } else {
+                    // Fallback — несколько коротких тонов
+                    const now = audioCtx.currentTime;
+                    for (let i = 0; i < 3; i++) {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.value = 600 + i * 150;
+                        gain.gain.setValueAtTime(0.1, now + i * 0.05);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.1);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + i * 0.05);
+                        osc.stop(now + i * 0.05 + 0.1);
+                    }
+                }
             }
 
-            // --- Haptic feedback ---
+            // --- Тактильный отклик ---
             function haptic() {
                 if (navigator.vibrate) navigator.vibrate(8);
             }
 
-            // --- Build bubbles ---
+            // --- Создание пузырьков ---
             for (let i = 0; i < TOTAL; i++) {
                 const bubble = document.createElement('div');
                 bubble.className = 'bubble bubble-appear';
@@ -410,7 +233,7 @@
                 filmWrapper.appendChild(bubble);
             }
 
-            // --- Interaction handlers ---
+            // --- Обработка лопания ---
             let isMouseDown = false;
 
             function handlePop(bubble) {
@@ -418,8 +241,8 @@
                 if (now - lastPop < 20) return;
                 lastPop = now;
 
-                // Запускаем инициализацию аудио в фоне (если ещё не)
-                ensureAudioInit();
+                // Разблокируем аудио (если ещё нет) — это синхронно и безопасно
+                if (!audioUnlocked) unlockAudio();
 
                 bubble.classList.add('popped');
                 bubble.classList.remove('bubble-appear');
@@ -430,6 +253,7 @@
                 poppedCountEl.textContent = totalPopped;
 
                 haptic();
+                playPopSound();
 
                 MILESTONES.forEach(m => {
                     if (!celebrated.has(m) && totalPopped >= m) {
@@ -438,13 +262,10 @@
                     }
                 });
 
-                playPopSound();
-
                 if (popped === TOTAL && !allPopped) {
                     allPopped = true;
                     setTimeout(() => {
-                        // При перезарядке тоже запускаем инициализацию (на случай если ещё не готова)
-                        ensureAudioInit();
+                        if (!audioUnlocked) unlockAudio();
                         playReloadSound();
                         document.querySelectorAll('.bubble').forEach(b => {
                             b.classList.remove('popped', 'bubble-pulse');
@@ -464,7 +285,7 @@
                 setTimeout(() => bubble.classList.remove('bubble-pulse'), 300);
             }
 
-            // Mouse
+            // --- События мыши ---
             filmWrapper.addEventListener('mousedown', (e) => {
                 isMouseDown = true;
                 const target = e.target.closest('.bubble');
@@ -473,22 +294,17 @@
                     else wiggle(target);
                 }
             });
-
             filmWrapper.addEventListener('mousemove', (e) => {
                 if (!isMouseDown) return;
                 const target = e.target.closest('.bubble');
-                if (target && target.dataset.popped === '0') {
-                    handlePop(target);
-                }
+                if (target && target.dataset.popped === '0') handlePop(target);
             });
-
             document.addEventListener('mouseup', () => { isMouseDown = false; });
 
-            // Touch
+            // --- События касания ---
             filmWrapper.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                // При первом касании запускаем аудио
-                ensureAudioInit();
+                if (!audioUnlocked) unlockAudio(); // важно: синхронно в жесте
                 for (const touch of e.touches) {
                     const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
                     if (el) {
@@ -509,26 +325,24 @@
                     if (el.dataset.popped === '0') handlePop(el);
                 }
             }, { passive: false });
-
             filmWrapper.addEventListener('touchend', (e) => {
                 for (const touch of e.changedTouches) lastTouchedBubble.delete(touch.identifier);
             });
 
-            // Keyboard
+            // --- Клавиатура ---
             document.onkeydown = (e) => {
                 if (e.code === 'Space') {
                     e.preventDefault();
-                    ensureAudioInit();
+                    if (!audioUnlocked) unlockAudio();
                     const unpopped = [...document.querySelectorAll('.bubble[data-popped="0"]')];
                     if (unpopped.length) handlePop(unpopped[Math.random() * unpopped.length | 0]);
                 }
             };
 
-            // --- Confetti celebration ---
+            // --- Конфетти ---
             function celebrate(milestone) {
                 const count = milestone === 100 ? 30 : milestone === 1000 ? 50 : 80;
                 const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ff8e53', '#9b59b6', '#3498db'];
-                
                 for (let i = 0; i < count; i++) {
                     const confetti = document.createElement('div');
                     confetti.className = 'confetti';
@@ -544,10 +358,7 @@
                         { top: '-20px', opacity: 0, transform: 'rotate(0deg)' },
                         { top: `${Math.random() * 80 + 10}vh`, opacity: 1, transform: `rotate(${Math.random() * 360}deg)` },
                         { top: '120vh', opacity: 0, transform: `rotate(${Math.random() * 720}deg)` }
-                    ], {
-                        duration: Math.random() * 2000 + 1500,
-                        easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)'
-                    });
+                    ], { duration: Math.random() * 2000 + 1500, easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)' });
                     anim.onfinish = () => confetti.remove();
                 }
             }
@@ -564,6 +375,5 @@
         ym(105846768, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
     </script>
     <noscript><div><img src="https://mc.yandex.ru/watch/105846768" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-    <!-- /Yandex.Metrika counter -->
 </body>
 </html>
