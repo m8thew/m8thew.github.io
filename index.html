@@ -278,7 +278,7 @@
                 <span class="separator">|</span>
                 <span>нажми на пробел или пузырик для чпоканья</span>
                 <span class="separator">|</span>
-                <span>created by <a href="https://t.me/attentionm8thew" target="_blank" style="color: #1E90FF; text-decoration: none;">@m8thew</a></span>
+                <span>created by <a href="https://t.me/envctx" target="_blank" style="color: #1E90FF; text-decoration: none;">@m8thew</a></span>
                 <span class="separator">|</span>
                 <span class="theme-toggle" id="themeToggle" title="сменить тему">
                     <span class="toggle-opt toggle-opt-light">свет</span><span class="toggle-opt toggle-opt-dark">тьма</span>
@@ -319,104 +319,42 @@
         const celebrated = new Set();
         
         // --- Audio ---
-        let audioContext;
-        let popSoundBuffer;
-        let reloadSoundBuffer;
+        const POP_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3';
+        const RELOAD_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3';
+
+        const POP_POOL_SIZE = 6;
+        const popPool = Array.from({length: POP_POOL_SIZE}, () => new Audio(POP_URL));
+        const reloadAudio = new Audio(RELOAD_URL);
+        let popPoolIndex = 0;
         let audioInitialized = false;
-
-        function createAudioContext() {
-            if (audioContext) return;
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            } catch (e) {
-                console.log("Web Audio API не поддерживается");
-            }
-        }
-
-        function unlockAudio() {
-            if (!audioContext) return;
-            if (audioContext.state === 'suspended') audioContext.resume();
-            // iOS unlock trick: play a silent 1-sample buffer inside user gesture
-            try {
-                const buf = audioContext.createBuffer(1, 1, 22050);
-                const src = audioContext.createBufferSource();
-                src.buffer = buf;
-                src.connect(audioContext.destination);
-                src.start(0);
-            } catch(e) {}
-        }
-
-        // Грузим звуки сразу при загрузке страницы через обычный fetch
-        // AudioContext создаём только по жесту — но буферы уже готовы
-        const soundURLs = {
-            pop: 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3',
-            reload: 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3'
-        };
-        const rawBuffers = {};
-
-        function preloadSounds() {
-            Object.entries(soundURLs).forEach(([type, url]) => {
-                fetch(url)
-                    .then(r => r.arrayBuffer())
-                    .then(buf => { rawBuffers[type] = buf; })
-                    .catch(e => console.log("Ошибка preload:", e));
-            });
-        }
-        preloadSounds();
 
         function initAudio() {
             if (audioInitialized) return;
-            createAudioContext();
-            if (!audioContext) return;
-            unlockAudio();
-            // Декодируем уже загруженные буферы
-            Object.entries(rawBuffers).forEach(([type, buf]) => {
-                audioContext.decodeAudioData(buf.slice(0)).then(audioBuf => {
-                    if (type === 'pop') popSoundBuffer = audioBuf;
-                    else if (type === 'reload') reloadSoundBuffer = audioBuf;
-                }).catch(e => console.log("Ошибка decode:", e));
-            });
-            // Если буферы ещё грузятся — повесим колбэк
-            if (Object.keys(rawBuffers).length < 2) {
-                const interval = setInterval(() => {
-                    Object.entries(rawBuffers).forEach(([type, buf]) => {
-                        if (type === 'pop' && !popSoundBuffer) {
-                            audioContext.decodeAudioData(buf.slice(0)).then(ab => { popSoundBuffer = ab; });
-                        }
-                        if (type === 'reload' && !reloadSoundBuffer) {
-                            audioContext.decodeAudioData(buf.slice(0)).then(ab => { reloadSoundBuffer = ab; });
-                        }
-                    });
-                    if (popSoundBuffer && reloadSoundBuffer) clearInterval(interval);
-                }, 200);
-            }
+            // На iOS нужно вызвать .play() внутри user gesture чтобы разблокировать
+            popPool.forEach(a => { a.load(); });
+            reloadAudio.load();
+            // Тихий play+pause для разблокировки iOS
+            const unlock = popPool[0];
+            unlock.volume = 0;
+            unlock.play().then(() => { unlock.pause(); unlock.currentTime = 0; unlock.volume = 1; }).catch(() => {});
             audioInitialized = true;
         }
         
 
         
-        // Random pitch: playbackRate в диапазоне [minRate, maxRate]
-        function playSound(buffer, volume = 0.7, pitchMin = 0.85, pitchMax = 1.18) {
-            if (!audioContext || !buffer) return;
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-            try {
-                const source = audioContext.createBufferSource();
-                const gainNode = audioContext.createGain();
-                source.buffer = buffer;
-                gainNode.gain.value = volume;
-                source.playbackRate.value = pitchMin + Math.random() * (pitchMax - pitchMin);
-                source.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                source.start(0);
-                setTimeout(() => {
-                    source.disconnect();
-                    gainNode.disconnect();
-                }, buffer.duration * 1000 + 200);
-            } catch (e) {
-                console.log("Ошибка воспроизведения звука");
-            }
+        function playPopSound() {
+            const audio = popPool[popPoolIndex % POP_POOL_SIZE];
+            popPoolIndex++;
+            audio.currentTime = 0;
+            audio.volume = 0.7;
+            audio.playbackRate = 0.85 + Math.random() * 0.33;
+            audio.play().catch(() => {});
+        }
+
+        function playReloadSound() {
+            reloadAudio.currentTime = 0;
+            reloadAudio.volume = 0.7;
+            reloadAudio.play().catch(() => {});
         }
 
         // --- Haptic feedback ---
@@ -528,12 +466,12 @@
                 }
             });
             
-            if (popSoundBuffer) playSound(popSoundBuffer, 0.7);
+            playPopSound();
             
             if (popped === TOTAL && !allPopped) {
                 allPopped = true;
                 setTimeout(() => {
-                    if (reloadSoundBuffer) playSound(reloadSoundBuffer, 0.7, 0.95, 1.05);
+                    playReloadSound();
                     document.querySelectorAll('.bubble').forEach(b => {
                         b.classList.remove('popped', 'bubble-pulse');
                         b.classList.add('bubble-appear');
