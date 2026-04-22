@@ -328,6 +328,7 @@
             if (audioInitialized) return;
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioContext.resume();
                 loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3', 'pop');
                 loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3', 'reload');
                 audioInitialized = true;
@@ -350,6 +351,9 @@
         // Random pitch: playbackRate в диапазоне [minRate, maxRate]
         function playSound(buffer, volume = 0.7, pitchMin = 0.85, pitchMax = 1.18) {
             if (!audioContext || !buffer) return;
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
             try {
                 const source = audioContext.createBufferSource();
                 const gainNode = audioContext.createGain();
