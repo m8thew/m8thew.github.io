@@ -319,64 +319,64 @@
         const celebrated = new Set();
         
         // --- Audio ---
+        // Используем MediaElementAudioSourceNode — Safari нормально декодирует через <audio>
         const POP_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3';
         const RELOAD_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3';
 
         let audioCtx = null;
-        let popBuffer = null;
-        let reloadBuffer = null;
         let audioReady = false;
 
-        // Грузим байты сразу при загрузке страницы (без AudioContext)
-        const popBytes = fetch(POP_URL).then(r => r.arrayBuffer()).catch(() => null);
-        const reloadBytes = fetch(RELOAD_URL).then(r => r.arrayBuffer()).catch(() => null);
+        // Пул <audio> элементов для чпока (чтобы не ждать окончания предыдущего)
+        const POP_POOL = 6;
+        const popAudios = [];
+        const reloadAudioEl = new Audio(RELOAD_URL);
+        reloadAudioEl.preload = 'auto';
+        let popIdx = 0;
 
-        // Вызывается при первом жесте — создаём и разблокируем AudioContext
+        for (let i = 0; i < POP_POOL; i++) {
+            const a = new Audio(POP_URL);
+            a.preload = 'auto';
+            popAudios.push(a);
+        }
+
         async function initAudio() {
             if (audioReady) return;
+            audioReady = true; // ставим сразу чтобы не звать повторно
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                // Разблокировка iOS: silent buffer внутри user gesture
                 await audioCtx.resume();
-                const silentBuf = audioCtx.createBuffer(1, 1, 22050);
-                const silentSrc = audioCtx.createBufferSource();
-                silentSrc.buffer = silentBuf;
-                silentSrc.connect(audioCtx.destination);
-                silentSrc.start(0);
-                // Декодируем уже загруженные байты
-                const [pb, rb] = await Promise.all([popBytes, reloadBytes]);
-                if (pb) popBuffer = await audioCtx.decodeAudioData(pb);
-                if (rb) reloadBuffer = await audioCtx.decodeAudioData(rb);
-                audioReady = true;
+                // Подключаем все <audio> к AudioContext для питча через WebAudio
+                popAudios.forEach(a => {
+                    try {
+                        const src = audioCtx.createMediaElementSource(a);
+                        const gain = audioCtx.createGain();
+                        gain.gain.value = 0.7;
+                        src.connect(gain);
+                        gain.connect(audioCtx.destination);
+                    } catch(e) {}
+                });
+                const rSrc = audioCtx.createMediaElementSource(reloadAudioEl);
+                const rGain = audioCtx.createGain();
+                rGain.gain.value = 0.7;
+                rSrc.connect(rGain);
+                rGain.connect(audioCtx.destination);
             } catch(e) {
-                console.log('Audio init error:', e);
+                console.log('AudioContext failed, using plain Audio:', e);
+                audioCtx = null;
             }
         }
 
         function playPopSound() {
-            if (!audioCtx || !popBuffer) return;
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const src = audioCtx.createBufferSource();
-            const gain = audioCtx.createGain();
-            src.buffer = popBuffer;
-            src.playbackRate.value = 0.85 + Math.random() * 0.33;
-            gain.gain.value = 0.7;
-            src.connect(gain);
-            gain.connect(audioCtx.destination);
-            src.start(0);
+            const a = popAudios[popIdx % POP_POOL];
+            popIdx++;
+            a.currentTime = 0;
+            a.playbackRate = 0.85 + Math.random() * 0.33;
+            a.play().catch(() => {});
         }
 
         function playReloadSound() {
-            if (!audioCtx || !reloadBuffer) return;
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const src = audioCtx.createBufferSource();
-            const gain = audioCtx.createGain();
-            src.buffer = reloadBuffer;
-            src.playbackRate.value = 1.0;
-            gain.gain.value = 0.7;
-            src.connect(gain);
-            gain.connect(audioCtx.destination);
-            src.start(0);
+            reloadAudioEl.currentTime = 0;
+            reloadAudioEl.play().catch(() => {});
         }
 
         // --- Haptic feedback ---
@@ -392,7 +392,7 @@
         document.addEventListener('keydown', initAudio, { once: false });
         // iOS: audio unlock must happen in touchstart WITHOUT preventDefault
         document.addEventListener('touchstart', () => {
-            if (!audioInitialized) initAudio();
+            if (!audioReady) initAudio();
         }, { passive: true });
         
         // --- Build bubbles ---
