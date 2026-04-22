@@ -346,26 +346,54 @@
             } catch(e) {}
         }
 
+        // Грузим звуки сразу при загрузке страницы через обычный fetch
+        // AudioContext создаём только по жесту — но буферы уже готовы
+        const soundURLs = {
+            pop: 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3',
+            reload: 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3'
+        };
+        const rawBuffers = {};
+
+        function preloadSounds() {
+            Object.entries(soundURLs).forEach(([type, url]) => {
+                fetch(url)
+                    .then(r => r.arrayBuffer())
+                    .then(buf => { rawBuffers[type] = buf; })
+                    .catch(e => console.log("Ошибка preload:", e));
+            });
+        }
+        preloadSounds();
+
         function initAudio() {
             if (audioInitialized) return;
             createAudioContext();
             if (!audioContext) return;
             unlockAudio();
-            loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3', 'pop');
-            loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3', 'reload');
+            // Декодируем уже загруженные буферы
+            Object.entries(rawBuffers).forEach(([type, buf]) => {
+                audioContext.decodeAudioData(buf.slice(0)).then(audioBuf => {
+                    if (type === 'pop') popSoundBuffer = audioBuf;
+                    else if (type === 'reload') reloadSoundBuffer = audioBuf;
+                }).catch(e => console.log("Ошибка decode:", e));
+            });
+            // Если буферы ещё грузятся — повесим колбэк
+            if (Object.keys(rawBuffers).length < 2) {
+                const interval = setInterval(() => {
+                    Object.entries(rawBuffers).forEach(([type, buf]) => {
+                        if (type === 'pop' && !popSoundBuffer) {
+                            audioContext.decodeAudioData(buf.slice(0)).then(ab => { popSoundBuffer = ab; });
+                        }
+                        if (type === 'reload' && !reloadSoundBuffer) {
+                            audioContext.decodeAudioData(buf.slice(0)).then(ab => { reloadSoundBuffer = ab; });
+                        }
+                    });
+                    if (popSoundBuffer && reloadSoundBuffer) clearInterval(interval);
+                }, 200);
+            }
             audioInitialized = true;
         }
         
-        function loadSound(url, type) {
-            fetch(url)
-                .then(r => r.arrayBuffer())
-                .then(buf => audioContext.decodeAudioData(buf))
-                .then(audioBuf => {
-                    if (type === 'pop') popSoundBuffer = audioBuf;
-                    else if (type === 'reload') reloadSoundBuffer = audioBuf;
-                })
-                .catch(e => console.log("Ошибка загрузки звука:", e));
-        }
+
         
         // Random pitch: playbackRate в диапазоне [minRate, maxRate]
         function playSound(buffer, volume = 0.7, pitchMin = 0.85, pitchMax = 1.18) {
