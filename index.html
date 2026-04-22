@@ -278,7 +278,7 @@
                 <span class="separator">|</span>
                 <span>нажми на пробел или пузырик для чпоканья</span>
                 <span class="separator">|</span>
-                <span>created by <a href="https://t.me/envctx" target="_blank" style="color: #1E90FF; text-decoration: none;">@m8thew</a></span>
+                <span>created by <a href="https://t.me/attentionm8thew" target="_blank" style="color: #1E90FF; text-decoration: none;">@m8thew</a></span>
                 <span class="separator">|</span>
                 <span class="theme-toggle" id="themeToggle" title="сменить тему">
                     <span class="toggle-opt toggle-opt-light">свет</span><span class="toggle-opt toggle-opt-dark">тьма</span>
@@ -323,18 +323,37 @@
         let popSoundBuffer;
         let reloadSoundBuffer;
         let audioInitialized = false;
-        
-        function initAudio() {
-            if (audioInitialized) return;
+
+        function createAudioContext() {
+            if (audioContext) return;
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                audioContext.resume();
-                loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3', 'pop');
-                loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3', 'reload');
-                audioInitialized = true;
             } catch (e) {
                 console.log("Web Audio API не поддерживается");
             }
+        }
+
+        function unlockAudio() {
+            if (!audioContext) return;
+            if (audioContext.state === 'suspended') audioContext.resume();
+            // iOS unlock trick: play a silent 1-sample buffer inside user gesture
+            try {
+                const buf = audioContext.createBuffer(1, 1, 22050);
+                const src = audioContext.createBufferSource();
+                src.buffer = buf;
+                src.connect(audioContext.destination);
+                src.start(0);
+            } catch(e) {}
+        }
+
+        function initAudio() {
+            if (audioInitialized) return;
+            createAudioContext();
+            if (!audioContext) return;
+            unlockAudio();
+            loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3', 'pop');
+            loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3', 'reload');
+            audioInitialized = true;
         }
         
         function loadSound(url, type) {
@@ -382,8 +401,11 @@
         }
         
         document.addEventListener('click', initAudio, { once: false });
-        document.addEventListener('touchstart', initAudio, { once: false });
         document.addEventListener('keydown', initAudio, { once: false });
+        // iOS: audio unlock must happen in touchstart WITHOUT preventDefault
+        document.addEventListener('touchstart', () => {
+            if (!audioInitialized) initAudio();
+        }, { passive: true });
         
         // --- Build bubbles ---
         for (let i = 0; i < TOTAL; i++) {
