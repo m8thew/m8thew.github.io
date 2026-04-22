@@ -6,7 +6,6 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <title>чпок</title>
     <style>
-        /* Стили без изменений */
         :root {
             --bg: #fff;
             --text: #000;
@@ -97,12 +96,12 @@
     
     <script>
         (function(){
-            // --- Элементы и тема ---
             const filmWrapper = document.getElementById('filmWrapper');
             const poppedCountEl = document.getElementById('poppedCount');
             const themeToggle = document.getElementById('themeToggle');
             const html = document.documentElement;
             
+            // Тема
             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const savedTheme = localStorage.getItem('theme') || (systemDark ? 'dark' : 'light');
             html.setAttribute('data-theme', savedTheme);
@@ -112,34 +111,33 @@
                 localStorage.setItem('theme', next);
             });
 
-            // --- Константы игры ---
+            // Игра
             const ROWS = 9, COLS = 9, TOTAL = ROWS * COLS;
             const MILESTONES = [100, 1000, 10000];
             let popped = 0, totalPopped = 0, allPopped = false, lastPop = 0;
             const celebrated = new Set();
 
-            // --- Аудио: предзагрузка ArrayBuffer, инициализация по жесту ---
+            // Аудио
             const POP_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3';
             const RELOAD_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3';
             
             let audioCtx = null;
             let popBuffer = null;
             let reloadBuffer = null;
-            let audioUnlocked = false;
-            
-            // Предзагружаем сырые байты при загрузке страницы
+            let audioInitialized = false;
             let popArrayBuffer = null;
             let reloadArrayBuffer = null;
             
+            // Предзагрузка ArrayBuffer
             fetch(POP_URL).then(r => r.arrayBuffer()).then(b => popArrayBuffer = b).catch(e => console.warn('pop fetch error', e));
             fetch(RELOAD_URL).then(r => r.arrayBuffer()).then(b => reloadArrayBuffer = b).catch(e => console.warn('reload fetch error', e));
 
-            // Создание и разблокировка AudioContext (вызывается синхронно в жесте)
-            function unlockAudio() {
-                if (audioUnlocked) return;
+            // Инициализация аудио при первом взаимодействии
+            function initAudio() {
+                if (audioInitialized) return;
                 try {
                     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    // Разблокировка тихим буфером
+                    // Разблокировка
                     const silentBuf = audioCtx.createBuffer(1, 1, 22050);
                     const source = audioCtx.createBufferSource();
                     source.buffer = silentBuf;
@@ -148,84 +146,59 @@
                     if (audioCtx.state === 'suspended') {
                         audioCtx.resume();
                     }
-                    audioUnlocked = true;
+                    audioInitialized = true;
                     
-                    // Запускаем декодирование предзагруженных буферов (в фоне)
+                    // Декодирование предзагруженных данных
                     if (popArrayBuffer) {
                         audioCtx.decodeAudioData(popArrayBuffer.slice(0), (buf) => { popBuffer = buf; }, (err) => console.warn('pop decode error', err));
+                    } else {
+                        // Если по какой-то причине массив ещё не загружен, пробуем загрузить сейчас
+                        fetch(POP_URL).then(r => r.arrayBuffer()).then(b => {
+                            audioCtx.decodeAudioData(b.slice(0), (buf) => { popBuffer = buf; });
+                        });
                     }
                     if (reloadArrayBuffer) {
-                        audioCtx.decodeAudioData(reloadArrayBuffer.slice(0), (buf) => { reloadBuffer = buf; }, (err) => console.warn('reload decode error', err));
+                        audioCtx.decodeAudioData(reloadArrayBuffer.slice(0), (buf) => { reloadBuffer = buf; });
+                    } else {
+                        fetch(RELOAD_URL).then(r => r.arrayBuffer()).then(b => {
+                            audioCtx.decodeAudioData(b.slice(0), (buf) => { reloadBuffer = buf; });
+                        });
                     }
                 } catch(e) {
-                    console.error('Audio unlock error:', e);
+                    console.error('Audio init error:', e);
                 }
             }
 
-            // Воспроизведение: если буфер готов — Web Audio, иначе синтезируем "чпок" осциллятором
             function playPopSound() {
-                if (!audioCtx) return;
+                if (!audioCtx || !popBuffer) return;
                 if (audioCtx.state === 'suspended') audioCtx.resume();
-                
-                if (popBuffer) {
-                    const src = audioCtx.createBufferSource();
-                    const gain = audioCtx.createGain();
-                    src.buffer = popBuffer;
-                    src.playbackRate.value = 0.85 + Math.random() * 0.33;
-                    gain.gain.value = 0.7;
-                    src.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    src.start(0);
-                } else {
-                    // Fallback-звук через Oscillator (короткий щелчок)
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.value = 800 + Math.random() * 400;
-                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start();
-                    osc.stop(audioCtx.currentTime + 0.08);
-                }
+                const src = audioCtx.createBufferSource();
+                const gain = audioCtx.createGain();
+                src.buffer = popBuffer;
+                src.playbackRate.value = 0.85 + Math.random() * 0.33;
+                gain.gain.value = 0.7;
+                src.connect(gain);
+                gain.connect(audioCtx.destination);
+                src.start(0);
             }
 
             function playReloadSound() {
-                if (!audioCtx) return;
+                if (!audioCtx || !reloadBuffer) return;
                 if (audioCtx.state === 'suspended') audioCtx.resume();
-                if (reloadBuffer) {
-                    const src = audioCtx.createBufferSource();
-                    const gain = audioCtx.createGain();
-                    src.buffer = reloadBuffer;
-                    gain.gain.value = 0.7;
-                    src.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    src.start(0);
-                } else {
-                    // Fallback — несколько коротких тонов
-                    const now = audioCtx.currentTime;
-                    for (let i = 0; i < 3; i++) {
-                        const osc = audioCtx.createOscillator();
-                        const gain = audioCtx.createGain();
-                        osc.type = 'triangle';
-                        osc.frequency.value = 600 + i * 150;
-                        gain.gain.setValueAtTime(0.1, now + i * 0.05);
-                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.1);
-                        osc.connect(gain);
-                        gain.connect(audioCtx.destination);
-                        osc.start(now + i * 0.05);
-                        osc.stop(now + i * 0.05 + 0.1);
-                    }
-                }
+                const src = audioCtx.createBufferSource();
+                const gain = audioCtx.createGain();
+                src.buffer = reloadBuffer;
+                gain.gain.value = 0.7;
+                src.connect(gain);
+                gain.connect(audioCtx.destination);
+                src.start(0);
             }
 
-            // --- Тактильный отклик ---
             function haptic() {
                 if (navigator.vibrate) navigator.vibrate(8);
             }
 
-            // --- Создание пузырьков ---
+            // Создаём пузырьки
             for (let i = 0; i < TOTAL; i++) {
                 const bubble = document.createElement('div');
                 bubble.className = 'bubble bubble-appear';
@@ -233,7 +206,6 @@
                 filmWrapper.appendChild(bubble);
             }
 
-            // --- Обработка лопания ---
             let isMouseDown = false;
 
             function handlePop(bubble) {
@@ -241,8 +213,8 @@
                 if (now - lastPop < 20) return;
                 lastPop = now;
 
-                // Разблокируем аудио (если ещё нет) — это синхронно и безопасно
-                if (!audioUnlocked) unlockAudio();
+                // Инициализируем аудио, если ещё нет
+                if (!audioInitialized) initAudio();
 
                 bubble.classList.add('popped');
                 bubble.classList.remove('bubble-appear');
@@ -253,6 +225,8 @@
                 poppedCountEl.textContent = totalPopped;
 
                 haptic();
+                
+                // Воспроизводим звук (если буфер ещё не готов, звука не будет, но это только первый раз)
                 playPopSound();
 
                 MILESTONES.forEach(m => {
@@ -265,7 +239,6 @@
                 if (popped === TOTAL && !allPopped) {
                     allPopped = true;
                     setTimeout(() => {
-                        if (!audioUnlocked) unlockAudio();
                         playReloadSound();
                         document.querySelectorAll('.bubble').forEach(b => {
                             b.classList.remove('popped', 'bubble-pulse');
@@ -285,7 +258,7 @@
                 setTimeout(() => bubble.classList.remove('bubble-pulse'), 300);
             }
 
-            // --- События мыши ---
+            // Мышь
             filmWrapper.addEventListener('mousedown', (e) => {
                 isMouseDown = true;
                 const target = e.target.closest('.bubble');
@@ -301,10 +274,10 @@
             });
             document.addEventListener('mouseup', () => { isMouseDown = false; });
 
-            // --- События касания ---
+            // Касания
             filmWrapper.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                if (!audioUnlocked) unlockAudio(); // важно: синхронно в жесте
+                if (!audioInitialized) initAudio(); // важно: синхронно в жесте
                 for (const touch of e.touches) {
                     const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
                     if (el) {
@@ -329,17 +302,17 @@
                 for (const touch of e.changedTouches) lastTouchedBubble.delete(touch.identifier);
             });
 
-            // --- Клавиатура ---
+            // Клавиатура
             document.onkeydown = (e) => {
                 if (e.code === 'Space') {
                     e.preventDefault();
-                    if (!audioUnlocked) unlockAudio();
+                    if (!audioInitialized) initAudio();
                     const unpopped = [...document.querySelectorAll('.bubble[data-popped="0"]')];
                     if (unpopped.length) handlePop(unpopped[Math.random() * unpopped.length | 0]);
                 }
             };
 
-            // --- Конфетти ---
+            // Конфетти
             function celebrate(milestone) {
                 const count = milestone === 100 ? 30 : milestone === 1000 ? 50 : 80;
                 const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ff8e53', '#9b59b6', '#3498db'];
