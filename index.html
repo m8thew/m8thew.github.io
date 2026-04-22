@@ -106,10 +106,9 @@
             cursor: pointer; 
             position: relative; 
             box-shadow: 
-                inset 0 0 0 1px var(--bubble-shadow-inset),
-                inset 0 -2px 4px var(--bubble-shadow-inset2), 
-                0 2px 4px var(--bubble-shadow);
-            transition: background 0.25s, box-shadow 0.25s;
+                inset 0 -2px 3px var(--bubble-shadow-inset2), 
+                0 1px 2px var(--bubble-shadow);
+            transform: translateZ(0);
         }
         
         .bubble:before { 
@@ -145,10 +144,8 @@
         
         .bubble.popped { 
             background: var(--bubble-popped);
-            transform: scale(0.7);
-            box-shadow: 
-                inset 0 0 0 1px var(--bubble-popped-inset), 
-                0 1px 2px var(--bubble-popped-shadow);
+            transform: scale(0.7) translateZ(0);
+            box-shadow: none;
         }
 
         .bubble.popped:before,
@@ -319,64 +316,73 @@
         const celebrated = new Set();
         
         // --- Audio ---
-        // Используем MediaElementAudioSourceNode — Safari нормально декодирует через <audio>
+        // WebAudio API с правильным iOS unlock и decodeAudioData на клоне буфера
         const POP_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3';
         const RELOAD_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3';
 
         let audioCtx = null;
+        let popBuffer = null;
+        let reloadBuffer = null;
         let audioReady = false;
+        let popBytes = null;
+        let reloadBytes = null;
 
-        // Пул <audio> элементов для чпока (чтобы не ждать окончания предыдущего)
-        const POP_POOL = 6;
-        const popAudios = [];
-        const reloadAudioEl = new Audio(RELOAD_URL);
-        reloadAudioEl.preload = 'auto';
-        let popIdx = 0;
+        // Грузим байты сразу при старте страницы
+        fetch(POP_URL).then(r => r.arrayBuffer()).then(b => { popBytes = b; tryDecode(); }).catch(()=>{});
+        fetch(RELOAD_URL).then(r => r.arrayBuffer()).then(b => { reloadBytes = b; tryDecode(); }).catch(()=>{});
 
-        for (let i = 0; i < POP_POOL; i++) {
-            const a = new Audio(POP_URL);
-            a.preload = 'auto';
-            popAudios.push(a);
+        function tryDecode() {
+            if (!audioCtx) return;
+            if (popBytes && !popBuffer) {
+                // Safari требует callback-версию decodeAudioData и .slice чтобы не "съесть" буфер
+                audioCtx.decodeAudioData(popBytes.slice(0), buf => { popBuffer = buf; }, err => console.log('pop decode fail', err));
+            }
+            if (reloadBytes && !reloadBuffer) {
+                audioCtx.decodeAudioData(reloadBytes.slice(0), buf => { reloadBuffer = buf; }, err => console.log('reload decode fail', err));
+            }
         }
 
-        async function initAudio() {
+        function initAudio() {
             if (audioReady) return;
-            audioReady = true; // ставим сразу чтобы не звать повторно
+            audioReady = true;
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                await audioCtx.resume();
-                // Подключаем все <audio> к AudioContext для питча через WebAudio
-                popAudios.forEach(a => {
-                    try {
-                        const src = audioCtx.createMediaElementSource(a);
-                        const gain = audioCtx.createGain();
-                        gain.gain.value = 0.7;
-                        src.connect(gain);
-                        gain.connect(audioCtx.destination);
-                    } catch(e) {}
-                });
-                const rSrc = audioCtx.createMediaElementSource(reloadAudioEl);
-                const rGain = audioCtx.createGain();
-                rGain.gain.value = 0.7;
-                rSrc.connect(rGain);
-                rGain.connect(audioCtx.destination);
+                // iOS unlock: silent buffer внутри user gesture — СИНХРОННО, без await
+                const silentBuf = audioCtx.createBuffer(1, 1, 22050);
+                const silentSrc = audioCtx.createBufferSource();
+                silentSrc.buffer = silentBuf;
+                silentSrc.connect(audioCtx.destination);
+                silentSrc.start(0);
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                tryDecode();
             } catch(e) {
-                console.log('AudioContext failed, using plain Audio:', e);
-                audioCtx = null;
+                console.log('AudioContext error:', e);
             }
         }
 
         function playPopSound() {
-            const a = popAudios[popIdx % POP_POOL];
-            popIdx++;
-            a.currentTime = 0;
-            a.playbackRate = 0.85 + Math.random() * 0.33;
-            a.play().catch(() => {});
+            if (!audioCtx || !popBuffer) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const src = audioCtx.createBufferSource();
+            const gain = audioCtx.createGain();
+            src.buffer = popBuffer;
+            src.playbackRate.value = 0.85 + Math.random() * 0.33;
+            gain.gain.value = 0.7;
+            src.connect(gain);
+            gain.connect(audioCtx.destination);
+            src.start(0);
         }
 
         function playReloadSound() {
-            reloadAudioEl.currentTime = 0;
-            reloadAudioEl.play().catch(() => {});
+            if (!audioCtx || !reloadBuffer) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const src = audioCtx.createBufferSource();
+            const gain = audioCtx.createGain();
+            src.buffer = reloadBuffer;
+            gain.gain.value = 0.7;
+            src.connect(gain);
+            gain.connect(audioCtx.destination);
+            src.start(0);
         }
 
         // --- Haptic feedback ---
@@ -439,15 +445,22 @@
             }
         }, { passive: false });
 
+        // Кэшируем последний задетый пузырь для каждого пальца, чтобы не дёргать elementFromPoint впустую
+        const lastTouchedBubble = new Map();
         filmWrapper.addEventListener('touchmove', (e) => {
             e.preventDefault();
             for (const touch of e.touches) {
                 const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
-                if (el && el.dataset.popped === '0') {
-                    popBubble(el);
-                }
+                if (!el) continue;
+                if (lastTouchedBubble.get(touch.identifier) === el) continue;
+                lastTouchedBubble.set(touch.identifier, el);
+                if (el.dataset.popped === '0') popBubble(el);
             }
         }, { passive: false });
+
+        filmWrapper.addEventListener('touchend', (e) => {
+            for (const touch of e.changedTouches) lastTouchedBubble.delete(touch.identifier);
+        });
 
         // --- Keyboard ---
         document.onkeydown = (e) => {
@@ -506,7 +519,7 @@
         }
         
         function celebrate(milestone) {
-            const count = milestone === 100 ? 50 : milestone === 1000 ? 100 : 200;
+            const count = milestone === 100 ? 30 : milestone === 1000 ? 50 : 80;
             const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ff8e53', '#9b59b6', '#3498db'];
             
             for (let i = 0; i < count; i++) {
