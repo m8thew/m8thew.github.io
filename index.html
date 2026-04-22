@@ -2,7 +2,7 @@
 <html lang="ru" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <title>чпок</title>
     <style>
@@ -42,34 +42,227 @@
             --toggle-active: #f0f0f0;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; -webkit-font-smoothing: antialiased; touch-action: manipulation; position: relative; overflow-x: hidden; transition: background 0.25s, color 0.25s; }
-        .container { max-width: 800px; width: 100%; text-align: center; }
-        .game-area { display: flex; justify-content: center; margin-bottom: 25px; }
-        .film-container { background: var(--film-bg); border-radius: 32px; padding: 20px; max-width: 600px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border: 1px solid var(--film-border); transition: background 0.25s, border-color 0.25s; }
-        .film-wrapper { display: grid; grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(9, 1fr); gap: 6px; height: 100%; }
-        .bubble { width: 100%; aspect-ratio: 1/1; background: var(--bubble-bg); border-radius: 50%; cursor: pointer; position: relative; box-shadow: inset 0 -2px 3px var(--bubble-shadow-inset2), 0 1px 2px var(--bubble-shadow); transform: translateZ(0); }
-        .bubble:before { content: ''; position: absolute; top: 20%; left: 20%; width: 35%; height: 35%; background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.95) 0%, transparent 70%); border-radius: 50%; }
-        [data-theme="dark"] .bubble:before { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.15) 0%, transparent 70%); }
-        .bubble:after { content: ''; position: absolute; top: 10%; left: 10%; width: 15%; height: 15%; background: rgba(255,255,255,0.8); border-radius: 50%; filter: blur(1px); }
-        [data-theme="dark"] .bubble:after { background: rgba(255,255,255,0.12); }
-        .bubble.popped { background: var(--bubble-popped); transform: scale(0.7) translateZ(0); box-shadow: none; }
-        .bubble.popped:before, .bubble.popped:after { display: none; }
-        @keyframes bubbleAppear { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
-        @keyframes pulse { 0% { transform: scale(0.7); } 50% { transform: scale(0.65); } 100% { transform: scale(0.7); } }
-        .bubble-appear { animation: bubbleAppear 0.4s ease forwards; }
-        .bubble-pulse { animation: pulse 0.3s ease; }
-        .info-bar { font-size: 13px; color: var(--subtext); margin-top: 20px; width: 100%; text-align: center; line-height: 1.4; transition: color 0.25s; }
-        .info-text { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
-        .separator { opacity: 0.3; }
-        .stats { color: var(--text); font-weight: 500; }
-        .theme-toggle { display: inline-flex; align-items: center; gap: 0; cursor: pointer; border: 1px solid currentColor; border-radius: 20px; overflow: hidden; opacity: 0.45; transition: opacity 0.2s; font-size: 11px; letter-spacing: 0.02em; }
-        .theme-toggle:hover { opacity: 0.9; }
-        .toggle-opt { padding: 2px 7px; transition: background 0.2s, color 0.2s; line-height: 1.6; }
-        [data-theme="light"] .toggle-opt-light, [data-theme="dark"] .toggle-opt-dark { background: var(--text); color: var(--bg); }
-        .confetti { position: fixed; width: 12px; height: 12px; background: var(--c); top: -20px; opacity: 0; pointer-events: none; z-index: 9999; }
-        @media (max-width: 768px) { .film-wrapper { gap: 5px; } .film-container { padding: 16px; border-radius: 28px; } .info-bar { font-size: 12px; } }
-        @media (max-width: 480px) { body { padding: 16px; } .film-wrapper { gap: 4px; } .film-container { padding: 14px; border-radius: 24px; } .info-text { flex-direction: column; gap: 6px; } .separator { display: none; } }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body { 
+            font-family: -apple-system, sans-serif; 
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px; 
+            -webkit-font-smoothing: antialiased; 
+            touch-action: manipulation;
+            position: relative;
+            overflow-x: hidden;
+            transition: background 0.25s, color 0.25s;
+        }
+        
+        .container { 
+            max-width: 800px; 
+            width: 100%; 
+            text-align: center; 
+        }
+        
+        .game-area { 
+            display: flex; 
+            justify-content: center; 
+            margin-bottom: 25px; 
+        }
+        
+        .film-container {
+            background: var(--film-bg);
+            border-radius: 32px;
+            padding: 20px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            border: 1px solid var(--film-border);
+            transition: background 0.25s, border-color 0.25s;
+        }
+        
+        .film-wrapper { 
+            display: grid; 
+            grid-template-columns: repeat(9, 1fr); 
+            grid-template-rows: repeat(9, 1fr); 
+            gap: 6px; 
+            height: 100%; 
+        }
+        
+        .bubble { 
+            width: 100%; 
+            aspect-ratio: 1/1; 
+            background: var(--bubble-bg);
+            border-radius: 50%; 
+            cursor: pointer; 
+            position: relative; 
+            box-shadow: 
+                inset 0 0 0 1px var(--bubble-shadow-inset),
+                inset 0 -2px 4px var(--bubble-shadow-inset2), 
+                0 2px 4px var(--bubble-shadow);
+            transition: background 0.25s, box-shadow 0.25s;
+        }
+        
+        .bubble:before { 
+            content: ''; 
+            position: absolute; 
+            top: 20%; 
+            left: 20%; 
+            width: 35%; 
+            height: 35%; 
+            background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.95) 0%, transparent 70%); 
+            border-radius: 50%; 
+        }
+
+        [data-theme="dark"] .bubble:before {
+            background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.15) 0%, transparent 70%);
+        }
+        
+        .bubble:after { 
+            content: ''; 
+            position: absolute; 
+            top: 10%; 
+            left: 10%; 
+            width: 15%; 
+            height: 15%; 
+            background: rgba(255,255,255,0.8); 
+            border-radius: 50%; 
+            filter: blur(1px); 
+        }
+
+        [data-theme="dark"] .bubble:after {
+            background: rgba(255,255,255,0.12);
+        }
+        
+        .bubble.popped { 
+            background: var(--bubble-popped);
+            transform: scale(0.7);
+            box-shadow: 
+                inset 0 0 0 1px var(--bubble-popped-inset), 
+                0 1px 2px var(--bubble-popped-shadow);
+        }
+
+        .bubble.popped:before,
+        .bubble.popped:after {
+            display: none;
+        }
+        
+        @keyframes bubbleAppear {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(0.7); }
+            50% { transform: scale(0.65); }
+            100% { transform: scale(0.7); }
+        }
+        
+        .bubble-appear {
+            animation: bubbleAppear 0.4s ease forwards;
+        }
+        
+        .bubble-pulse {
+            animation: pulse 0.3s ease;
+        }
+        
+        .info-bar { 
+            font-size: 13px; 
+            color: var(--subtext);
+            margin-top: 20px; 
+            width: 100%; 
+            text-align: center; 
+            line-height: 1.4;
+            transition: color 0.25s;
+        }
+        
+        .info-text { 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+        }
+        
+        .separator { 
+            opacity: 0.3; 
+        }
+        
+        .stats { 
+            color: var(--text);
+            font-weight: 500; 
+        }
+
+        /* Dark mode toggle */
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            cursor: pointer;
+            border: 1px solid currentColor;
+            border-radius: 20px;
+            overflow: hidden;
+            opacity: 0.45;
+            transition: opacity 0.2s;
+            font-size: 11px;
+            letter-spacing: 0.02em;
+        }
+
+        .theme-toggle:hover {
+            opacity: 0.9;
+        }
+
+        .toggle-opt {
+            padding: 2px 7px;
+            transition: background 0.2s, color 0.2s;
+            line-height: 1.6;
+        }
+
+        [data-theme="light"] .toggle-opt-light,
+        [data-theme="dark"]  .toggle-opt-dark {
+            background: var(--text);
+            color: var(--bg);
+        }
+        
+        .confetti {
+            position: fixed;
+            width: 12px;
+            height: 12px;
+            background: var(--c);
+            top: -20px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        
+        @media (max-width: 768px) { 
+            .film-wrapper { gap: 5px; } 
+            .film-container { 
+                padding: 16px; 
+                border-radius: 28px;
+            } 
+            .info-bar { font-size: 12px; } 
+        }
+        
+        @media (max-width: 480px) { 
+            body { padding: 16px; } 
+            .film-wrapper { gap: 4px; } 
+            .film-container { 
+                padding: 14px; 
+                border-radius: 24px; 
+            } 
+            .info-text { flex-direction: column; gap: 6px; } 
+            .separator { display: none; } 
+        }
     </style>
 </head>
 <body>
@@ -85,7 +278,7 @@
                 <span class="separator">|</span>
                 <span>нажми на пробел или пузырик для чпоканья</span>
                 <span class="separator">|</span>
-                <span>created by <a href="https://t.me/attentionm8thew" target="_blank" style="color: #1E90FF; text-decoration: none;">@m8thew</a></span>
+                <span>created by <a href="https://t.me/envctx" target="_blank" style="color: #1E90FF; text-decoration: none;">@m8thew</a></span>
                 <span class="separator">|</span>
                 <span class="theme-toggle" id="themeToggle" title="сменить тему">
                     <span class="toggle-opt toggle-opt-light">свет</span><span class="toggle-opt toggle-opt-dark">тьма</span>
@@ -95,302 +288,247 @@
     </div>
     
     <script>
-        (function(){
-            const filmWrapper = document.getElementById('filmWrapper');
-            const poppedCountEl = document.getElementById('poppedCount');
-            const themeToggle = document.getElementById('themeToggle');
-            const html = document.documentElement;
+        const filmWrapper = document.getElementById('filmWrapper');
+        const poppedCountEl = document.getElementById('poppedCount');
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        
+        // --- Theme toggle ---
+        // Берём сохранённую тему; если не было — смотрим системную (prefers-color-scheme)
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const savedTheme = localStorage.getItem('theme') || (systemDark ? 'dark' : 'light');
+        html.setAttribute('data-theme', savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const current = html.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        });
+
+        // --- Game constants ---
+        const ROWS = 9;
+        const COLS = 9;
+        const TOTAL = ROWS * COLS;
+        const MILESTONES = [100, 1000, 10000];
+        
+        let popped = 0;
+        let totalPopped = 0;
+        let allPopped = false;
+        let lastPop = 0;
+        const celebrated = new Set();
+        
+        // --- Audio ---
+        let audioContext;
+        let popSoundBuffer;
+        let reloadSoundBuffer;
+        let audioInitialized = false;
+        
+        function initAudio() {
+            if (audioInitialized) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3', 'pop');
+                loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3', 'reload');
+                audioInitialized = true;
+            } catch (e) {
+                console.log("Web Audio API не поддерживается");
+            }
+        }
+        
+        function loadSound(url, type) {
+            fetch(url)
+                .then(r => r.arrayBuffer())
+                .then(buf => audioContext.decodeAudioData(buf))
+                .then(audioBuf => {
+                    if (type === 'pop') popSoundBuffer = audioBuf;
+                    else if (type === 'reload') reloadSoundBuffer = audioBuf;
+                })
+                .catch(e => console.log("Ошибка загрузки звука:", e));
+        }
+        
+        // Random pitch: playbackRate в диапазоне [minRate, maxRate]
+        function playSound(buffer, volume = 0.7, pitchMin = 0.85, pitchMax = 1.18) {
+            if (!audioContext || !buffer) return;
+            try {
+                const source = audioContext.createBufferSource();
+                const gainNode = audioContext.createGain();
+                source.buffer = buffer;
+                gainNode.gain.value = volume;
+                source.playbackRate.value = pitchMin + Math.random() * (pitchMax - pitchMin);
+                source.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                source.start(0);
+                setTimeout(() => {
+                    source.disconnect();
+                    gainNode.disconnect();
+                }, buffer.duration * 1000 + 200);
+            } catch (e) {
+                console.log("Ошибка воспроизведения звука");
+            }
+        }
+
+        // --- Haptic feedback ---
+        function haptic() {
+            if (navigator.vibrate) {
+                navigator.vibrate(8);
+            }
+            // iOS Taptic Engine via AudioContext (silent click trick)
+            // Already handled by sound; no additional hack needed
+        }
+        
+        document.addEventListener('click', initAudio, { once: false });
+        document.addEventListener('touchstart', initAudio, { once: false });
+        document.addEventListener('keydown', initAudio, { once: false });
+        
+        // --- Build bubbles ---
+        for (let i = 0; i < TOTAL; i++) {
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble bubble-appear';
+            bubble.dataset.popped = '0';
+            filmWrapper.appendChild(bubble);
+        }
+
+        // --- Mouse drag to pop multiple ---
+        let isMouseDown = false;
+
+        filmWrapper.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            initAudio();
+            const target = e.target.closest('.bubble');
+            if (target) {
+                if (target.dataset.popped === '0') popBubble(target);
+                else wiggle(target);
+            }
+        });
+
+        filmWrapper.addEventListener('mousemove', (e) => {
+            if (!isMouseDown) return;
+            const target = e.target.closest('.bubble');
+            if (target && target.dataset.popped === '0') {
+                popBubble(target);
+            }
+        });
+
+        document.addEventListener('mouseup', () => { isMouseDown = false; });
+
+        // --- Touch drag to pop multiple ---
+        filmWrapper.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            initAudio();
+            for (const touch of e.touches) {
+                const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
+                if (el) {
+                    if (el.dataset.popped === '0') popBubble(el);
+                    else wiggle(el);
+                }
+            }
+        }, { passive: false });
+
+        filmWrapper.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (const touch of e.touches) {
+                const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
+                if (el && el.dataset.popped === '0') {
+                    popBubble(el);
+                }
+            }
+        }, { passive: false });
+
+        // --- Keyboard ---
+        document.onkeydown = (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                initAudio();
+                const unpopped = [...document.querySelectorAll('.bubble[data-popped="0"]')];
+                if (unpopped.length) popBubble(unpopped[Math.random() * unpopped.length | 0]);
+            }
+        };
+
+        function wiggle(bubble) {
+            bubble.classList.remove('bubble-pulse');
+            void bubble.offsetWidth;
+            bubble.classList.add('bubble-pulse');
+            setTimeout(() => bubble.classList.remove('bubble-pulse'), 300);
+        }
+        
+        function popBubble(bubble) {
+            const now = Date.now();
+            if (now - lastPop < 20) return;
+            lastPop = now;
             
-            // Theme
-            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const savedTheme = localStorage.getItem('theme') || (systemDark ? 'dark' : 'light');
-            html.setAttribute('data-theme', savedTheme);
-            themeToggle.addEventListener('click', () => {
-                const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-                html.setAttribute('data-theme', next);
-                localStorage.setItem('theme', next);
+            bubble.classList.add('popped');
+            bubble.classList.remove('bubble-appear');
+            bubble.dataset.popped = '1';
+            
+            popped++;
+            totalPopped++;
+            poppedCountEl.textContent = totalPopped;
+            
+            haptic();
+
+            MILESTONES.forEach(m => {
+                if (!celebrated.has(m) && totalPopped >= m) {
+                    celebrated.add(m);
+                    celebrate(m);
+                }
             });
-
-            // Game constants
-            const ROWS = 9, COLS = 9, TOTAL = ROWS * COLS;
-            const MILESTONES = [100, 1000, 10000];
-            let popped = 0, totalPopped = 0, allPopped = false, lastPop = 0;
-            const celebrated = new Set();
-
-            // Audio: предзагрузка и инициализация по жесту
-            const POP_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd.mp3';
-            const RELOAD_URL = 'https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3';
             
-            let audioCtx = null;
-            let popBuffer = null;
-            let reloadBuffer = null;
-            let audioUnlocked = false;
+            if (popSoundBuffer) playSound(popSoundBuffer, 0.7);
             
-            let popBufferPromise = null;
-            let reloadBufferPromise = null;
+            if (popped === TOTAL && !allPopped) {
+                allPopped = true;
+                setTimeout(() => {
+                    if (reloadSoundBuffer) playSound(reloadSoundBuffer, 0.7, 0.95, 1.05);
+                    document.querySelectorAll('.bubble').forEach(b => {
+                        b.classList.remove('popped', 'bubble-pulse');
+                        b.classList.add('bubble-appear');
+                        b.dataset.popped = '0';
+                    });
+                    popped = 0;
+                    allPopped = false;
+                }, 300);
+            }
+        }
+        
+        function celebrate(milestone) {
+            const count = milestone === 100 ? 50 : milestone === 1000 ? 100 : 200;
+            const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ff8e53', '#9b59b6', '#3498db'];
             
-            // Предзагружаем ArrayBuffer'ы
-            let popArrayBuffer = null;
-            let reloadArrayBuffer = null;
-            
-            fetch(POP_URL).then(r => r.arrayBuffer()).then(b => { popArrayBuffer = b; }).catch(e => console.warn('pop fetch error', e));
-            fetch(RELOAD_URL).then(r => r.arrayBuffer()).then(b => { reloadArrayBuffer = b; }).catch(e => console.warn('reload fetch error', e));
-
-            function unlockAudio() {
-                if (audioUnlocked) return;
-                try {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const silentBuf = audioCtx.createBuffer(1, 1, 22050);
-                    const source = audioCtx.createBufferSource();
-                    source.buffer = silentBuf;
-                    source.connect(audioCtx.destination);
-                    source.start(0);
-                    if (audioCtx.state === 'suspended') {
-                        audioCtx.resume();
-                    }
-                    audioUnlocked = true;
-                    
-                    if (popArrayBuffer) {
-                        popBufferPromise = new Promise((resolve) => {
-                            audioCtx.decodeAudioData(popArrayBuffer.slice(0), (buf) => {
-                                popBuffer = buf;
-                                resolve(buf);
-                            }, (err) => {
-                                console.warn('pop decode error', err);
-                                resolve(null);
-                            });
-                        });
-                    } else {
-                        popBufferPromise = fetch(POP_URL)
-                            .then(r => r.arrayBuffer())
-                            .then(buf => new Promise((resolve) => {
-                                audioCtx.decodeAudioData(buf.slice(0), (decoded) => {
-                                    popBuffer = decoded;
-                                    resolve(decoded);
-                                }, () => resolve(null));
-                            }));
-                    }
-                    
-                    if (reloadArrayBuffer) {
-                        reloadBufferPromise = new Promise((resolve) => {
-                            audioCtx.decodeAudioData(reloadArrayBuffer.slice(0), (buf) => {
-                                reloadBuffer = buf;
-                                resolve(buf);
-                            }, (err) => {
-                                console.warn('reload decode error', err);
-                                resolve(null);
-                            });
-                        });
-                    } else {
-                        reloadBufferPromise = fetch(RELOAD_URL)
-                            .then(r => r.arrayBuffer())
-                            .then(buf => new Promise((resolve) => {
-                                audioCtx.decodeAudioData(buf.slice(0), (decoded) => {
-                                    reloadBuffer = decoded;
-                                    resolve(decoded);
-                                }, () => resolve(null));
-                            }));
-                    }
-                } catch(e) {
-                    console.error('Audio unlock error:', e);
-                }
-            }
-
-            async function playPopSound() {
-                if (!audioCtx) return;
-                if (audioCtx.state === 'suspended') await audioCtx.resume();
-                
-                if (!popBuffer && popBufferPromise) {
-                    try {
-                        await Promise.race([
-                            popBufferPromise,
-                            new Promise(r => setTimeout(r, 500))
-                        ]);
-                    } catch(e) {}
-                }
-                
-                if (popBuffer) {
-                    const src = audioCtx.createBufferSource();
-                    const gain = audioCtx.createGain();
-                    src.buffer = popBuffer;
-                    src.playbackRate.value = 0.85 + Math.random() * 0.33;
-                    gain.gain.value = 0.7;
-                    src.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    src.start(0);
-                }
-            }
-
-            async function playReloadSound() {
-                if (!audioCtx) return;
-                if (audioCtx.state === 'suspended') await audioCtx.resume();
-                
-                if (!reloadBuffer && reloadBufferPromise) {
-                    try {
-                        await Promise.race([
-                            reloadBufferPromise,
-                            new Promise(r => setTimeout(r, 500))
-                        ]);
-                    } catch(e) {}
-                }
-                
-                if (reloadBuffer) {
-                    const src = audioCtx.createBufferSource();
-                    const gain = audioCtx.createGain();
-                    src.buffer = reloadBuffer;
-                    gain.gain.value = 0.7;
-                    src.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    src.start(0);
-                }
-            }
-
-            function haptic() {
-                if (navigator.vibrate) navigator.vibrate(8);
-            }
-
-            for (let i = 0; i < TOTAL; i++) {
-                const bubble = document.createElement('div');
-                bubble.className = 'bubble bubble-appear';
-                bubble.dataset.popped = '0';
-                filmWrapper.appendChild(bubble);
-            }
-
-            let isMouseDown = false;
-
-            async function handlePop(bubble) {
-                const now = Date.now();
-                if (now - lastPop < 20) return;
-                lastPop = now;
-
-                if (!audioUnlocked) unlockAudio();
-
-                bubble.classList.add('popped');
-                bubble.classList.remove('bubble-appear');
-                bubble.dataset.popped = '1';
-
-                popped++;
-                totalPopped++;
-                poppedCountEl.textContent = totalPopped;
-
-                haptic();
-                playPopSound();
-
-                MILESTONES.forEach(m => {
-                    if (!celebrated.has(m) && totalPopped >= m) {
-                        celebrated.add(m);
-                        celebrate(m);
-                    }
+            for (let i = 0; i < count; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.cssText = `
+                    --c: ${colors[i % colors.length]};
+                    left: ${Math.random() * 100}vw;
+                    width: ${Math.random() * 10 + 6}px;
+                    height: ${Math.random() * 10 + 6}px;
+                    border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+                `;
+                document.body.appendChild(confetti);
+                const anim = confetti.animate([
+                    { top: '-20px', opacity: 0, transform: 'rotate(0deg)' },
+                    { top: `${Math.random() * 80 + 10}vh`, opacity: 1, transform: `rotate(${Math.random() * 360}deg)` },
+                    { top: '120vh', opacity: 0, transform: `rotate(${Math.random() * 720}deg)` }
+                ], {
+                    duration: Math.random() * 2000 + 1500,
+                    easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)'
                 });
-
-                if (popped === TOTAL && !allPopped) {
-                    allPopped = true;
-                    setTimeout(() => {
-                        if (!audioUnlocked) unlockAudio();
-                        playReloadSound();
-                        document.querySelectorAll('.bubble').forEach(b => {
-                            b.classList.remove('popped', 'bubble-pulse');
-                            b.classList.add('bubble-appear');
-                            b.dataset.popped = '0';
-                        });
-                        popped = 0;
-                        allPopped = false;
-                    }, 300);
-                }
+                anim.onfinish = () => confetti.remove();
             }
-
-            function wiggle(bubble) {
-                bubble.classList.remove('bubble-pulse');
-                void bubble.offsetWidth;
-                bubble.classList.add('bubble-pulse');
-                setTimeout(() => bubble.classList.remove('bubble-pulse'), 300);
-            }
-
-            filmWrapper.addEventListener('mousedown', (e) => {
-                isMouseDown = true;
-                const target = e.target.closest('.bubble');
-                if (target) {
-                    if (target.dataset.popped === '0') handlePop(target);
-                    else wiggle(target);
-                }
-            });
-            filmWrapper.addEventListener('mousemove', (e) => {
-                if (!isMouseDown) return;
-                const target = e.target.closest('.bubble');
-                if (target && target.dataset.popped === '0') handlePop(target);
-            });
-            document.addEventListener('mouseup', () => { isMouseDown = false; });
-
-            filmWrapper.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (!audioUnlocked) unlockAudio();
-                for (const touch of e.touches) {
-                    const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
-                    if (el) {
-                        if (el.dataset.popped === '0') handlePop(el);
-                        else wiggle(el);
-                    }
-                }
-            }, { passive: false });
-
-            const lastTouchedBubble = new Map();
-            filmWrapper.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                for (const touch of e.touches) {
-                    const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.bubble');
-                    if (!el) continue;
-                    if (lastTouchedBubble.get(touch.identifier) === el) continue;
-                    lastTouchedBubble.set(touch.identifier, el);
-                    if (el.dataset.popped === '0') handlePop(el);
-                }
-            }, { passive: false });
-            filmWrapper.addEventListener('touchend', (e) => {
-                for (const touch of e.changedTouches) lastTouchedBubble.delete(touch.identifier);
-            });
-
-            document.onkeydown = (e) => {
-                if (e.code === 'Space') {
-                    e.preventDefault();
-                    if (!audioUnlocked) unlockAudio();
-                    const unpopped = [...document.querySelectorAll('.bubble[data-popped="0"]')];
-                    if (unpopped.length) handlePop(unpopped[Math.random() * unpopped.length | 0]);
-                }
-            };
-
-            function celebrate(milestone) {
-                const count = milestone === 100 ? 30 : milestone === 1000 ? 50 : 80;
-                const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ff8e53', '#9b59b6', '#3498db'];
-                for (let i = 0; i < count; i++) {
-                    const confetti = document.createElement('div');
-                    confetti.className = 'confetti';
-                    confetti.style.cssText = `
-                        --c: ${colors[i % colors.length]};
-                        left: ${Math.random() * 100}vw;
-                        width: ${Math.random() * 10 + 6}px;
-                        height: ${Math.random() * 10 + 6}px;
-                        border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
-                    `;
-                    document.body.appendChild(confetti);
-                    const anim = confetti.animate([
-                        { top: '-20px', opacity: 0, transform: 'rotate(0deg)' },
-                        { top: `${Math.random() * 80 + 10}vh`, opacity: 1, transform: `rotate(${Math.random() * 360}deg)` },
-                        { top: '120vh', opacity: 0, transform: `rotate(${Math.random() * 720}deg)` }
-                    ], { duration: Math.random() * 2000 + 1500, easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)' });
-                    anim.onfinish = () => confetti.remove();
-                }
-            }
-        })();
+        }
     </script>
     <!-- Yandex.Metrika counter -->
-    <script type="text/javascript">
-        (function(m,e,t,r,i,k,a){
-            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-            m[i].l=1*new Date();
-            for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-        })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105846768', 'ym');
-        ym(105846768, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
-    </script>
-    <noscript><div><img src="https://mc.yandex.ru/watch/105846768" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105846768', 'ym');
+    ym(105846768, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105846768" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
 </body>
 </html>
