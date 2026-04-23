@@ -258,6 +258,35 @@
             .info-text { flex-direction: column; gap: 6px; } 
             .separator { display: none; } 
         }
+
+        /* Cat */
+        .cat {
+            position: fixed;
+            bottom: 20px;
+            right: -200px;
+            width: 150px;
+            cursor: url('coursour.png'), pointer;
+            transition: right 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 1000;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .cat.visible {
+            right: 20px;
+        }
+
+        .cat.petting {
+            animation: catVibrate 0.05s linear infinite;
+        }
+
+        @keyframes catVibrate {
+            0%   { transform: translate(0, 0) rotate(0deg); }
+            25%  { transform: translate(2px, -1px) rotate(1deg); }
+            50%  { transform: translate(-2px, 1px) rotate(-1deg); }
+            75%  { transform: translate(1px, 2px) rotate(0.5deg); }
+            100% { transform: translate(-1px, -2px) rotate(-0.5deg); }
+        }
     </style>
 </head>
 <body>
@@ -281,6 +310,8 @@
             </div>
         </div>
     </div>
+
+    <img class="cat" id="cat" src="cat.png" alt="кот" draggable="false">
     
     <script>
         const filmWrapper = document.getElementById('filmWrapper');
@@ -317,6 +348,7 @@
         let audioContext;
         let popSoundBuffer;
         let reloadSoundBuffer;
+        let purrSoundBuffer;
         let audioInitialized = false;
         
         function initAudio() {
@@ -325,6 +357,7 @@
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokupd1.mp3', 'pop');
                 loadSound('https://cdn.jsdelivr.net/gh/m8thew/ihateeveryone@master/chpokreload.mp3', 'reload');
+                loadSound('purr.mp3', 'purr');
                 audioInitialized = true;
             } catch (e) {
                 console.log("Web Audio API не поддерживается");
@@ -345,6 +378,7 @@
             console.log('decoded ok:', type, audioBuf.duration);
             if (type === 'pop') popSoundBuffer = audioBuf;
             else if (type === 'reload') reloadSoundBuffer = audioBuf;
+            else if (type === 'purr') purrSoundBuffer = audioBuf;
         })
         .catch(e => console.log("Ошибка:", e.name, e.message, e));
 }
@@ -494,6 +528,7 @@
         }
         
         function celebrate(milestone) {
+            if (milestone === 1000) showCat();
             const count = milestone === 100 ? 50 : milestone === 1000 ? 100 : 200;
             const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ff8e53', '#9b59b6', '#3498db'];
             
@@ -519,6 +554,67 @@
                 anim.onfinish = () => confetti.remove();
             }
         }
+
+        // --- Cat ---
+        const catEl = document.getElementById('cat');
+        let isPetting = false;
+        let petTimeout;
+
+        function showCat() {
+            catEl.classList.add('visible');
+        }
+
+        let purrSource = null;
+        let purrGain = null;
+
+        function startPurr() {
+            if (!audioContext || !purrSoundBuffer || purrSource) return;
+            purrGain = audioContext.createGain();
+            purrGain.gain.value = 0;
+            purrSource = audioContext.createBufferSource();
+            purrSource.buffer = purrSoundBuffer;
+            purrSource.loop = true;
+            purrSource.connect(purrGain);
+            purrGain.connect(audioContext.destination);
+            purrSource.start(0);
+            purrGain.gain.linearRampToValueAtTime(0.6, audioContext.currentTime + 0.3);
+        }
+
+        function stopPurr() {
+            if (!purrSource || !purrGain) return;
+            purrGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.4);
+            const s = purrSource;
+            const g = purrGain;
+            setTimeout(() => { try { s.stop(); s.disconnect(); g.disconnect(); } catch(e){} }, 500);
+            purrSource = null;
+            purrGain = null;
+        }
+
+        catEl.addEventListener('mouseenter', () => {
+            isPetting = true;
+            catEl.classList.add('petting');
+            startPurr();
+        });
+
+        catEl.addEventListener('mouseleave', () => {
+            isPetting = false;
+            catEl.classList.remove('petting');
+            stopPurr();
+        });
+
+        catEl.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            isPetting = true;
+            catEl.classList.add('petting');
+            startPurr();
+        }, { passive: true });
+
+        catEl.addEventListener('touchend', (e) => {
+            e.stopPropagation();
+            isPetting = false;
+            catEl.classList.remove('petting');
+            stopPurr();
+        }, { passive: true });
     </script>
     <!-- Yandex.Metrika counter -->
 <script type="text/javascript">
